@@ -1,428 +1,571 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>甄選名單群體分析儀表板</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>PGY 甄選報名資料分析儀表板</title>
     
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        primary: '#003566', // 亮藍色
-                        accent: '#fca311',  // 琥珀色
-                        highlight: '#fef9c3', // 淡黃色
-                        slate: {
-                            50: '#f8fafc',
-                        }
+                        primary: '#003566', // Deep Blue
+                        secondary: '#fca311', // Amber
+                        accent: '#fef9c3', // Light Yellow
+                        bg: '#f8fafc', // Slate 50
+                        surface: '#ffffff',
+                        success: '#10b981', // Emerald
+                        danger: '#ef4444', // Red
                     },
                     fontFamily: {
-                        sans: ['Noto Sans TC', 'Inter', 'sans-serif'],
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
                     }
                 }
             }
         }
     </script>
     <style>
-        body {
-            background-color: #f8fafc;
-            color: #1e293b;
-        }
-        .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transition: transform 0.2s;
-        }
-        .card:hover {
-            transform: translateY(-2px);
-        }
+        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; background-color: #f8fafc; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #fca311; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Tag Styles */
+        .tag { padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; margin-right: 4px; display: inline-block; margin-bottom: 2px;}
+        .tag-blue { background: #e0f2fe; color: #0369a1; }
+        .tag-amber { background: #fef3c7; color: #b45309; }
+        .tag-green { background: #d1fae5; color: #047857; }
+        .tag-slate { background: #f1f5f9; color: #475569; }
+        .tag-red { background: #fee2e2; color: #b91c1c; }
+        .tag-pink { background: #fce7f3; color: #be185d; } /* New Pink Style */
     </style>
 </head>
-<body class="p-6 min-h-screen">
+<body class="text-slate-800">
 
-    <!-- Header -->
-    <header class="mb-8 border-b-4 border-accent pb-4">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-end">
+    <!-- Loading Screen -->
+    <div id="loading" class="fixed inset-0 bg-primary/90 z-50 flex flex-col items-center justify-center text-white">
+        <div class="loading-spinner mb-4"></div>
+        <h2 class="text-xl font-bold">正在讀取 PGY 甄選資料...</h2>
+        <p class="text-sm opacity-80 mt-2">分析樣本總數：235</p>
+    </div>
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto px-4 py-8 opacity-0 transition-opacity duration-700" id="main-content">
+        
+        <!-- Header -->
+        <header class="mb-8 border-l-4 border-secondary pl-4 flex flex-col md:flex-row md:justify-between md:items-end">
             <div>
-                <h1 class="text-3xl font-bold text-primary mb-2">甄選名單群體分析儀表板</h1>
-                <p class="text-gray-500 text-sm">資料來源：甄選名單G1150130.xlsx | 分析維度：20個面試組別 (上下午各10組)</p>
+                <h1 class="text-3xl font-bold text-primary">PGY 甄選報名資料分析儀表板</h1>
+                <p class="text-slate-500 mt-1">深度資質分析：均值/中位數偏態偵測 | 性別結構 | 北部生源偵測</p>
             </div>
             <div class="mt-4 md:mt-0 text-right">
-                <span class="bg-primary text-white px-4 py-1 rounded-full text-sm font-semibold shadow-md">2026 年度分析</span>
+                <span class="text-xs bg-primary text-white px-2 py-1 rounded">PGY Selection 202X</span>
             </div>
-        </div>
-    </header>
-
-    <!-- Strategy Insight Section -->
-    <section class="mb-8">
-        <div class="bg-blue-50 border-l-4 border-primary p-4 rounded-r-lg shadow-sm">
-            <h2 class="text-lg font-bold text-primary flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                策略洞察 (AI Analysis)
-            </h2>
-            <div class="mt-2 text-gray-700 space-y-2 text-sm">
-                <p>1. <strong>成績分佈概況：</strong> 下午場次的 GPA 平均值普遍略高於上午場次，且標準差較小，顯示下午場次的考生學業表現較為均質。</p>
-                <p>2. <strong>地緣與性別：</strong> 南部地區考生佔比在多數組別中顯著高於北部（約為 6:4 或 7:3 趨勢），這可能與實習醫院地緣（台南/高雄）有關；性別比例在各組間波動較大，需注意部分組別性別單一化的潛在面試偏誤。</p>
-                <p>3. <strong>離散度警示：</strong> 請留意標準差 (SD) 大於 0.4 的組別，代表該組考生程度落差較大，面試官可能需要更靈活的提問策略來鑑別程度。</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- Main Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        
-        <!-- Chart 1: GPA Analysis -->
-        <div class="card p-6 lg:col-span-2">
-            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                <span class="w-2 h-6 bg-accent mr-2 rounded"></span>
-                各組 GPA 成績分析 (平均數 & 中位數)
-            </h3>
-            <div class="h-80 w-full relative">
-                <canvas id="gpaChart"></canvas>
-            </div>
-        </div>
+        </header>
 
         <!-- KPI Cards -->
-        <div class="flex flex-col gap-6">
-            <div class="card p-6 bg-gradient-to-br from-primary to-blue-900 text-white">
-                <h4 class="text-blue-200 text-sm font-semibold uppercase tracking-wider">全體 GPA 平均</h4>
-                <div class="flex items-end gap-2 mt-2">
-                    <span class="text-4xl font-bold" id="totalAvg">--</span>
-                    <span class="text-sm text-blue-200 mb-1">/ 4.3</span>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="card p-6 border-t-4 border-primary">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">總樣本數 (有效組別)</p>
+                        <h3 class="text-3xl font-bold text-primary mt-1" id="total-students">0</h3>
+                    </div>
+                    <div class="p-2 bg-blue-50 rounded-lg text-primary">
+                        <i class="ph ph-users text-2xl"></i>
+                    </div>
                 </div>
             </div>
             
+            <div class="card p-6 border-t-4 border-secondary">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">全體 GPA 平均</p>
+                        <h3 class="text-3xl font-bold text-secondary mt-1" id="overall-gpa">0.00</h3>
+                    </div>
+                    <div class="p-2 bg-amber-50 rounded-lg text-secondary">
+                        <i class="ph ph-exam text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6 border-t-4 border-secondary">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">南部生源總佔比</p>
+                        <h3 class="text-3xl font-bold text-secondary mt-1" id="south-ratio">0%</h3>
+                        <p class="text-xs text-slate-400 mt-1">包含台南及其他南部</p>
+                    </div>
+                    <div class="p-2 bg-amber-50 rounded-lg text-secondary">
+                        <i class="ph ph-house-line text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6 border-t-4 border-slate-400">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">北區生源總佔比</p>
+                        <h3 class="text-3xl font-bold text-slate-600 mt-1" id="north-ratio">0%</h3>
+                    </div>
+                    <div class="p-2 bg-slate-100 rounded-lg text-slate-600">
+                        <i class="ph ph-map-pin text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Section 1: Performance -->
+        <div class="card p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold text-primary flex items-center">
+                    <i class="ph ph-trend-up mr-2"></i> 各組成績 GPA 資質分析
+                </h3>
+                <div class="flex gap-2">
+                     <span class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">長條：平均 GPA</span>
+                     <span class="text-xs px-2 py-1 bg-amber-100 text-amber-800 rounded">折線：標準差</span>
+                </div>
+            </div>
+            <div class="relative h-64">
+                <canvas id="gpaChart"></canvas>
+            </div>
+            <p class="text-xs text-slate-400 mt-2 text-center">*標準差 (折線) 越低代表該組成績越整齊，越高代表落差越大</p>
+        </div>
+
+        <!-- Chart Section 2: Demographics (Side by Side) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            
+            <!-- Location Distribution -->
             <div class="card p-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-2">南北分佈總覽</h3>
-                <div class="h-48 relative">
-                    <canvas id="regionPieChart"></canvas>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-primary flex items-center">
+                        <i class="ph ph-map-trifold mr-2"></i> 各組生源地緣比率 (100%)
+                    </h3>
                 </div>
+                <div class="relative h-72">
+                    <canvas id="locationChart"></canvas>
+                </div>
+                <div class="flex flex-wrap justify-center gap-2 mt-2 text-xs text-slate-500">
+                    <span class="flex items-center"><div class="w-2 h-2 rounded-full bg-[#fca311] mr-1"></div>南部 (含台南)</span>
+                    <span class="flex items-center"><div class="w-2 h-2 rounded-full bg-[#003566] mr-1"></div>北部</span>
+                    <span class="flex items-center"><div class="w-2 h-2 rounded-full bg-[#cbd5e1] mr-1"></div>其他</span>
+                </div>
+                <p class="text-xs text-center text-slate-400 mt-2">* 懸停圖表可查看實際人數</p>
+            </div>
+
+            <!-- Gender Distribution -->
+            <div class="card p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-primary flex items-center">
+                        <i class="ph ph-gender-intersex mr-2"></i> 各組性別比率 (100%)
+                    </h3>
+                </div>
+                <div class="relative h-72">
+                    <canvas id="genderChart"></canvas>
+                </div>
+                 <div class="flex justify-center gap-4 mt-2 text-xs text-slate-500">
+                    <span class="flex items-center"><div class="w-2 h-2 rounded-full bg-[#60a5fa] mr-1"></div>男性</span>
+                    <span class="flex items-center"><div class="w-2 h-2 rounded-full bg-[#f472b6] mr-1"></div>女性</span>
+                </div>
+                <p class="text-xs text-center text-slate-400 mt-2">* 懸停圖表可查看實際人數</p>
             </div>
         </div>
-    </div>
 
-    <!-- Second Row Charts -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <!-- Region Distribution by Group -->
-        <div class="card p-6">
-            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                <span class="w-2 h-6 bg-primary mr-2 rounded"></span>
-                各組居住地佔比 (南北分析)
-            </h3>
-            <div class="h-72 w-full relative">
-                <canvas id="regionStackChart"></canvas>
+        <!-- Insight & Stats Table -->
+        <div class="card overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h3 class="text-lg font-bold text-primary flex items-center">
+                        <i class="ph ph-lightning mr-2 text-secondary"></i> PGY 各組特性智能分析
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-1">包含資質偏態分析(均值vs中位數)、性別與地緣特性</p>
+                </div>
+                <button onclick="exportTableToCSV()" class="text-sm bg-primary text-white px-4 py-2 rounded hover:bg-blue-800 transition shadow-sm">
+                    <i class="ph ph-download-simple mr-1"></i> 匯出分析報告
+                </button>
             </div>
-            <p class="text-xs text-gray-400 mt-2 text-center">* 北部包含：基隆、雙北、桃園、新竹、宜蘭</p>
-        </div>
-
-        <!-- Gender Distribution by Group -->
-        <div class="card p-6">
-            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                <span class="w-2 h-6 bg-primary mr-2 rounded"></span>
-                各組性別比例
-            </h3>
-            <div class="h-72 w-full relative">
-                <canvas id="genderStackChart"></canvas>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b">
+                        <tr>
+                            <th class="px-4 py-3 min-w-[100px]">群體名稱</th>
+                            <th class="px-4 py-3 min-w-[200px]">AI 特性標籤</th>
+                            <th class="px-4 py-3 min-w-[250px]">資質與結構簡評</th>
+                            <th class="px-4 py-3 text-right">GPA 平均</th>
+                            <th class="px-4 py-3 text-right text-slate-600">中位數</th>
+                            <th class="px-4 py-3 text-right text-slate-600">標準差</th>
+                            <th class="px-4 py-3 text-right text-secondary font-semibold">南部占比</th>
+                            <th class="px-4 py-3 text-center">女生比例</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stats-table-body" class="divide-y divide-slate-100">
+                        <!-- Rows will be injected here -->
+                    </tbody>
+                </table>
             </div>
         </div>
+        
+        <footer class="mt-8 text-center text-slate-400 text-xs pb-8">
+            PGY Selection Analytics | Generated by AI Efficiency Partner
+        </footer>
+
     </div>
 
-    <!-- Data Table -->
-    <div class="card overflow-hidden">
-        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-            <h3 class="text-xl font-bold text-primary">詳細數據列表</h3>
-            <button onclick="exportTable()" class="bg-white border border-gray-300 text-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-50 transition">
-                匯出 CSV
-            </button>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left text-gray-600">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
-                    <tr>
-                        <th class="px-6 py-3">組別識別</th>
-                        <th class="px-6 py-3">人數</th>
-                        <th class="px-6 py-3 font-bold text-primary">GPA 平均</th>
-                        <th class="px-6 py-3">GPA 中位數</th>
-                        <th class="px-6 py-3">GPA 標準差</th>
-                        <th class="px-6 py-3 text-blue-600">南部比率</th>
-                        <th class="px-6 py-3 text-gray-500">北部比率</th>
-                        <th class="px-6 py-3">女性比率</th>
-                    </tr>
-                </thead>
-                <tbody id="dataTableBody" class="divide-y divide-gray-100">
-                    <!-- Javascript will populate this -->
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <footer class="mt-8 text-center text-gray-400 text-xs pb-4">
-        © 2026 Data Analysis Dashboard | Generated by Gemini Assistant
-    </footer>
-
-    <!-- Data Processing & Chart Logic -->
     <script>
-        // --- 1. Raw Data Injection (Simulated based on file analysis logic) ---
-        // 由於無法在瀏覽器端直接讀取您上傳的 Excel，我已在後端模擬了 CSV 解析邏輯
-        // 並將計算後的結果以 JSON 格式植入此處。
-        // 若需針對真實檔案即時運算，請將此部分改為 File Reader。
-        
-        // 模擬數據結構 (基於您的檔案格式邏輯)
-        // 假設：上午 1-10 組, 下午 1-10 組
-        // 數據為根據一般醫學系分佈產生的擬真數據，以展示圖表功能
-        
-        const rawData = [
-            { id: "上午-第1組", time: "上午", group: 1, count: 12, gpa_mean: 3.82, gpa_median: 3.85, gpa_std: 0.31, north: 3, south: 7, other: 2, male: 7, female: 5 },
-            { id: "上午-第2組", time: "上午", group: 2, count: 12, gpa_mean: 3.75, gpa_median: 3.78, gpa_std: 0.42, north: 4, south: 6, other: 2, male: 6, female: 6 },
-            { id: "上午-第3組", time: "上午", group: 3, count: 11, gpa_mean: 3.91, gpa_median: 4.00, gpa_std: 0.25, north: 2, south: 8, other: 1, male: 5, female: 6 },
-            { id: "上午-第4組", time: "上午", group: 4, count: 12, gpa_mean: 3.68, gpa_median: 3.70, gpa_std: 0.38, north: 5, south: 5, other: 2, male: 8, female: 4 },
-            { id: "上午-第5組", time: "上午", group: 5, count: 12, gpa_mean: 3.88, gpa_median: 3.90, gpa_std: 0.22, north: 3, south: 8, other: 1, male: 4, female: 8 },
-            { id: "上午-第6組", time: "上午", group: 6, count: 11, gpa_mean: 3.72, gpa_median: 3.75, gpa_std: 0.35, north: 4, south: 6, other: 1, male: 7, female: 4 },
-            { id: "上午-第7組", time: "上午", group: 7, count: 12, gpa_mean: 3.65, gpa_median: 3.60, gpa_std: 0.45, north: 6, south: 4, other: 2, male: 9, female: 3 },
-            { id: "上午-第8組", time: "上午", group: 8, count: 12, gpa_mean: 3.95, gpa_median: 4.00, gpa_std: 0.15, north: 2, south: 9, other: 1, male: 5, female: 7 },
-            { id: "上午-第9組", time: "上午", group: 9, count: 11, gpa_mean: 3.78, gpa_median: 3.80, gpa_std: 0.28, north: 3, south: 7, other: 1, male: 6, female: 5 },
-            { id: "上午-第10組", time: "上午", group: 10, count: 12, gpa_mean: 3.85, gpa_median: 3.88, gpa_std: 0.24, north: 4, south: 7, other: 1, male: 8, female: 4 },
-            
-            { id: "下午-第1組", time: "下午", group: 1, count: 12, gpa_mean: 3.92, gpa_median: 3.95, gpa_std: 0.18, north: 2, south: 9, other: 1, male: 6, female: 6 },
-            { id: "下午-第2組", time: "下午", group: 2, count: 12, gpa_mean: 3.88, gpa_median: 3.90, gpa_std: 0.21, north: 3, south: 8, other: 1, male: 5, female: 7 },
-            { id: "下午-第3組", time: "下午", group: 3, count: 11, gpa_mean: 3.76, gpa_median: 3.80, gpa_std: 0.33, north: 5, south: 5, other: 1, male: 7, female: 4 },
-            { id: "下午-第4組", time: "下午", group: 4, count: 12, gpa_mean: 3.85, gpa_median: 3.88, gpa_std: 0.25, north: 2, south: 8, other: 2, male: 6, female: 6 },
-            { id: "下午-第5組", time: "下午", group: 5, count: 12, gpa_mean: 3.98, gpa_median: 4.00, gpa_std: 0.12, north: 1, south: 10, other: 1, male: 4, female: 8 },
-            { id: "下午-第6組", time: "下午", group: 6, count: 11, gpa_mean: 3.70, gpa_median: 3.72, gpa_std: 0.39, north: 6, south: 4, other: 1, male: 8, female: 3 },
-            { id: "下午-第7組", time: "下午", group: 7, count: 12, gpa_mean: 3.80, gpa_median: 3.82, gpa_std: 0.29, north: 4, south: 7, other: 1, male: 6, female: 6 },
-            { id: "下午-第8組", time: "下午", group: 8, count: 12, gpa_mean: 3.90, gpa_median: 3.92, gpa_std: 0.20, north: 2, south: 9, other: 1, male: 5, female: 7 },
-            { id: "下午-第9組", time: "下午", group: 9, count: 11, gpa_mean: 3.84, gpa_median: 3.85, gpa_std: 0.26, north: 3, south: 7, other: 1, male: 7, female: 4 },
-            { id: "下午-第10組", time: "下午", group: 10, count: 12, gpa_mean: 3.79, gpa_median: 3.81, gpa_std: 0.30, north: 4, south: 6, other: 2, male: 6, female: 6 },
-        ];
+        // --- 1. Configuration & Utils ---
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR4AS_Mdx_cY9qfwgqmRzpg61obLy1J9axVSiTLBtN3_CBK5ciycko2ik_DtsZsMA/pub?gid=879652844&single=true&output=csv';
 
-        // --- 2. Chart Configurations ---
+        const NORTH_CITIES = ['基隆', '台北', '臺北', '新北', '桃園', '新竹', '苗栗', '台中', '臺中', '彰化', '南投', '宜蘭'];
+        const SOUTH_CITIES = ['雲林', '嘉義', '台南', '臺南', '高雄', '屏東']; 
 
-        Chart.defaults.font.family = "'Noto Sans TC', 'Inter', sans-serif";
-        Chart.defaults.color = '#64748b';
-
-        // Helper to format percentages
-        const toPct = (val, total) => ((val / total) * 100).toFixed(1);
-
-        document.addEventListener('DOMContentLoaded', () => {
-            
-            // Calculate Total Avg
-            const totalSum = rawData.reduce((acc, curr) => acc + (curr.gpa_mean * curr.count), 0);
-            const totalCount = rawData.reduce((acc, curr) => acc + curr.count, 0);
-            document.getElementById('totalAvg').innerText = (totalSum / totalCount).toFixed(2);
-
-            // Populate Table
-            const tbody = document.getElementById('dataTableBody');
-            rawData.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-blue-50 transition border-b border-gray-100 last:border-0";
-                tr.innerHTML = `
-                    <td class="px-6 py-4 font-medium text-gray-900">${row.id}</td>
-                    <td class="px-6 py-4">${row.count}</td>
-                    <td class="px-6 py-4 font-bold text-primary">${row.gpa_mean.toFixed(2)}</td>
-                    <td class="px-6 py-4">${row.gpa_median.toFixed(2)}</td>
-                    <td class="px-6 py-4 text-xs font-mono bg-gray-50 rounded">${row.gpa_std.toFixed(2)}</td>
-                    <td class="px-6 py-4 text-blue-600 font-medium">${toPct(row.south, row.count)}%</td>
-                    <td class="px-6 py-4 text-gray-500">${toPct(row.north, row.count)}%</td>
-                    <td class="px-6 py-4">${toPct(row.female, row.count)}%</td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            // Chart 1: GPA Analysis (Bar + Line)
-            const ctxGPA = document.getElementById('gpaChart').getContext('2d');
-            new Chart(ctxGPA, {
-                type: 'bar',
-                data: {
-                    labels: rawData.map(d => d.id.replace('第', '').replace('組', '')),
-                    datasets: [
-                        {
-                            label: '平均 GPA',
-                            data: rawData.map(d => d.gpa_mean),
-                            backgroundColor: '#003566',
-                            order: 2,
-                            borderRadius: 4
-                        },
-                        {
-                            label: '中位數',
-                            data: rawData.map(d => d.gpa_median),
-                            type: 'line',
-                            borderColor: '#fca311',
-                            borderWidth: 2,
-                            pointBackgroundColor: '#fff',
-                            pointBorderColor: '#fca311',
-                            pointRadius: 4,
-                            order: 1,
-                            tension: 0.4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'top' },
-                        tooltip: {
-                            callbacks: {
-                                afterBody: function(context) {
-                                    const idx = context[0].dataIndex;
-                                    return `標準差 (SD): ${rawData[idx].gpa_std}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            min: 3.5,
-                            max: 4.3,
-                            title: { display: true, text: 'GPA 分數' }
-                        },
-                        x: {
-                            ticks: { maxRotation: 45, minRotation: 45, font: {size: 10} }
-                        }
-                    }
-                }
-            });
-
-            // Chart 2: Region Distribution (Stacked Bar)
-            const ctxRegion = document.getElementById('regionStackChart').getContext('2d');
-            new Chart(ctxRegion, {
-                type: 'bar',
-                data: {
-                    labels: rawData.map(d => d.id.replace('第', '').replace('組', '')),
-                    datasets: [
-                        {
-                            label: '南部',
-                            data: rawData.map(d => toPct(d.south, d.count)),
-                            backgroundColor: '#003566',
-                            stack: 'Stack 0',
-                        },
-                        {
-                            label: '北部',
-                            data: rawData.map(d => toPct(d.north, d.count)),
-                            backgroundColor: '#94a3b8',
-                            stack: 'Stack 0',
-                        },
-                        {
-                            label: '其他',
-                            data: rawData.map(d => toPct(d.other, d.count)),
-                            backgroundColor: '#e2e8f0',
-                            stack: 'Stack 0',
-                            borderRadius: { topLeft: 4, topRight: 4 }
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ' + context.parsed.y + '%';
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            stacked: true,
-                            max: 100,
-                            title: { display: true, text: '比率 (%)' }
-                        },
-                        x: { stacked: true }
-                    }
-                }
-            });
-
-            // Chart 3: Gender Distribution (Stacked Bar)
-            const ctxGender = document.getElementById('genderStackChart').getContext('2d');
-            new Chart(ctxGender, {
-                type: 'bar',
-                data: {
-                    labels: rawData.map(d => d.id.replace('第', '').replace('組', '')),
-                    datasets: [
-                        {
-                            label: '女',
-                            data: rawData.map(d => toPct(d.female, d.count)),
-                            backgroundColor: '#fca311',
-                            stack: 'Stack 0',
-                        },
-                        {
-                            label: '男',
-                            data: rawData.map(d => toPct(d.male, d.count)),
-                            backgroundColor: '#003566',
-                            stack: 'Stack 0',
-                            borderRadius: { topLeft: 4, topRight: 4 }
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            stacked: true,
-                            max: 100
-                        },
-                        x: { stacked: true }
-                    }
-                }
-            });
-
-            // Chart 4: Total Region Pie
-            const totalNorth = rawData.reduce((a, b) => a + b.north, 0);
-            const totalSouth = rawData.reduce((a, b) => a + b.south, 0);
-            const totalOther = rawData.reduce((a, b) => a + b.other, 0);
-
-            const ctxPie = document.getElementById('regionPieChart').getContext('2d');
-            new Chart(ctxPie, {
-                type: 'doughnut',
-                data: {
-                    labels: ['南部', '北部', '其他'],
-                    datasets: [{
-                        data: [totalSouth, totalNorth, totalOther],
-                        backgroundColor: ['#003566', '#94a3b8', '#e2e8f0'],
-                        borderWidth: 0,
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: {
-                        legend: { position: 'right' }
-                    }
-                }
-            });
-        });
-
-        // Simple CSV Export Logic
-        function exportTable() {
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM for Excel
-            csvContent += "組別,總人數,GPA平均,GPA中位數,GPA標準差,南部人數,北部人數,男性人數,女性人數\n";
-            
-            rawData.forEach(row => {
-                let rowString = `${row.id},${row.count},${row.gpa_mean},${row.gpa_median},${row.gpa_std},${row.south},${row.north},${row.male},${row.female}`;
-                csvContent += rowString + "\r\n";
-            });
-            
-            var encodedUri = encodeURI(csvContent);
-            var link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "group_analysis_report.csv");
-            document.body.appendChild(link);
-            link.click();
+        function getRegion(address) {
+            if (!address) return 'Unknown';
+            if (NORTH_CITIES.some(c => address.includes(c))) return 'North';
+            if (SOUTH_CITIES.some(c => address.includes(c))) return 'South';
+            return 'Other';
         }
+
+        function calculateStandardDeviation(array) {
+            if (array.length <= 1) return 0;
+            const n = array.length;
+            const mean = array.reduce((a, b) => a + b) / n;
+            return Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / (n - 1));
+        }
+
+        function calculateMedian(array) {
+            const sorted = [...array].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+            return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        }
+
+        // --- 2. Data Processing & Logic ---
+        async function initDashboard() {
+            if (typeof Papa === 'undefined') {
+                alert('系統錯誤：資源載入失敗，請重新整理。');
+                return;
+            }
+
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true, 
+                complete: function(results) {
+                    processData(results.data);
+                },
+                error: function(err) {
+                    console.error(err);
+                    alert("資料讀取失敗。");
+                }
+            });
+        }
+
+        function processData(data) {
+            const keys = Object.keys(data[0]);
+            const findCol = (keywords) => keys.find(k => keywords.some(w => k.toLowerCase().includes(w.toLowerCase())));
+
+            const colSession = findCol(['時段', 'session', 'time']); 
+            const colGroup = findCol(['組別', 'group', 'team']);
+            const colGPA = findCol(['gpa', '成績', 'score']);
+            const colCity = findCol(['居住', 'city', 'address', 'location']);
+            const colGender = findCol(['性別', 'gender', 'sex']);
+
+            if (!colSession || !colGroup) {
+                alert("無法識別分組欄位，請檢查來源資料");
+                return;
+            }
+
+            const groups = {};
+            let globalGPA = [];
+            let globalSouth = 0, globalNorth = 0;
+            let validRowsCount = 0; 
+
+            data.forEach(row => {
+                const session = row[colSession]?.trim();
+                const groupNum = row[colGroup]?.trim();
+                
+                if (!session || !groupNum) return;
+                
+                validRowsCount++; 
+
+                const rawGpa = parseFloat(row[colGPA]);
+                const region = getRegion(row[colCity]);
+                const gender = row[colGender]?.trim();
+
+                const groupKey = `${session} - 第${groupNum}組`;
+
+                if (!groups[groupKey]) {
+                    groups[groupKey] = {
+                        name: groupKey,
+                        gpaList: [],
+                        southCount: 0,
+                        northCount: 0,
+                        otherCount: 0,
+                        maleCount: 0,
+                        femaleCount: 0,
+                        totalCount: 0 
+                    };
+                }
+
+                groups[groupKey].totalCount++;
+
+                if (!isNaN(rawGpa)) {
+                    groups[groupKey].gpaList.push(rawGpa);
+                    globalGPA.push(rawGpa);
+                }
+
+                if (region === 'South') { groups[groupKey].southCount++; globalSouth++; }
+                else if (region === 'North') { groups[groupKey].northCount++; globalNorth++; }
+                else { groups[groupKey].otherCount++; }
+
+                if (gender && (gender.includes('男') || gender.toLowerCase().startsWith('m'))) groups[groupKey].maleCount++;
+                else if (gender && (gender.includes('女') || gender.toLowerCase().startsWith('f'))) groups[groupKey].femaleCount++;
+            });
+
+            // Calculate Overall Stats
+            const overallMean = globalGPA.length > 0 ? (globalGPA.reduce((a, b) => a + b, 0) / globalGPA.length) : 0;
+            
+            // Calculate Group Stats first to get avgSD
+            let groupStats = Object.values(groups).map(g => {
+                const mean = g.gpaList.length > 0 ? (g.gpaList.reduce((a, b) => a + b, 0) / g.gpaList.length) : 0;
+                const median = g.gpaList.length > 0 ? calculateMedian(g.gpaList) : 0;
+                const sd = g.gpaList.length > 0 ? calculateStandardDeviation(g.gpaList) : 0;
+                const total = g.totalCount || 1; 
+
+                return {
+                    ...g,
+                    mean: mean,
+                    median: median,
+                    sd: sd,
+                    southRatio: (g.southCount / total * 100),
+                    northRatio: (g.northCount / total * 100),
+                    otherRatio: (g.otherCount / total * 100),
+                    maleRatio: (g.maleCount / total * 100),
+                    femaleRatio: (g.femaleCount / total * 100),
+                };
+            });
+
+            // Calculate Global Average SD to determine what is "Stable" vs "Volatile"
+            const validSDs = groupStats.map(g => g.sd).filter(sd => sd > 0);
+            const globalAvgSD = validSDs.length > 0 ? (validSDs.reduce((a, b) => a + b, 0) / validSDs.length) : 0;
+
+            // --- AI Insight Logic Refined ---
+            groupStats.forEach(g => {
+                g.tags = [];
+                g.insightText = "";
+
+                // 1. Aptitude Analysis (Mean + SD)
+                let performance = "";
+                if (g.mean > overallMean * 1.02) performance = "High";
+                else if (g.mean < overallMean * 0.98) performance = "Low";
+                else performance = "Avg";
+
+                let stability = "";
+                if (g.sd < globalAvgSD * 0.9) stability = "Stable"; 
+                else if (g.sd > globalAvgSD * 1.1) stability = "Volatile"; 
+                else stability = "Normal";
+
+                // Generate Tags for Performance/Stability
+                if (performance === "High" && stability === "Stable") g.tags.push({text: '績優穩定', type: 'blue'});
+                else if (performance === "High") g.tags.push({text: '績優但落差大', type: 'amber'});
+                else if (performance === "Low" && stability === "Stable") g.tags.push({text: '程度普遍偏弱', type: 'red'});
+                else if (performance === "Low") g.tags.push({text: '成績偏弱且不穩', type: 'red'});
+                else if (stability === "Volatile") g.tags.push({text: '組內落差懸殊', type: 'amber'});
+                // REMOVED: else g.tags.push({text: '資質平均', type: 'slate'});
+
+                // 2. Skewness Analysis (Mean vs Median) - TAGS REMOVED
+                // Use a threshold (e.g., 2% difference) to determine significant skew
+                const skewThreshold = 0.02;
+                // Tags removed as per request, but skew logic kept for comment text if needed, 
+                // or we can keep the comment logic and just remove the tags.
+
+                // 3. Geography (Only highlight Northern)
+                // If North is high, show tag.
+                if (g.northRatio > 50) g.tags.push({text: '北區生源', type: 'slate'});
+
+                // 4. Gender (Pink/Blue logic) - TAGS REMOVED
+                // We will handle coloring in the table cell directly.
+
+                // Construct Text
+                let comments = [];
+                
+                // Aptitude Comment
+                if (performance === "High") comments.push("平均優於全體");
+                else if (performance === "Low") comments.push("平均低於全體");
+                else comments.push("平均與全體持平");
+
+                if (stability === "Stable") comments.push("且程度整齊");
+                else if (stability === "Volatile") comments.push("但組內落差較大");
+                else comments.push("且分佈常態");
+
+                // Skewness Comment (Optional - kept for context)
+                if (g.mean < g.median * (1 - skewThreshold)) comments.push("；留意少數低分拉低均值");
+                else if (g.mean > g.median * (1 + skewThreshold)) comments.push("；均值受少數高分拉抬");
+
+                // Geo/Gender Comment
+                if (g.northRatio > 50) comments.push("；北區考生過半");
+                if (g.femaleRatio > 60) comments.push("；女性佔多數");
+                else if (g.maleRatio > 60) comments.push("；男性佔多數");
+
+                g.insightText = comments.join("");
+            });
+
+            groupStats.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant-TW', { numeric: true }));
+            updateUI(groupStats, globalGPA, globalSouth, globalNorth, validRowsCount);
+        }
+
+        function updateUI(groups, globalGPA, globalSouth, globalNorth, totalCount) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('main-content').classList.remove('opacity-0');
+
+            const overallMean = globalGPA.length > 0 ? (globalGPA.reduce((a, b) => a + b, 0) / globalGPA.length).toFixed(2) : "0.00";
+            
+            document.getElementById('total-students').innerText = totalCount;
+            document.getElementById('overall-gpa').innerText = overallMean;
+            document.getElementById('south-ratio').innerText = (globalSouth / totalCount * 100).toFixed(0) + '%';
+            document.getElementById('north-ratio').innerText = (globalNorth / totalCount * 100).toFixed(0) + '%';
+
+            renderCharts(groups);
+
+            const tbody = document.getElementById('stats-table-body');
+            tbody.innerHTML = groups.map(g => {
+                const tagsHtml = g.tags.map(t => `<span class="tag tag-${t.type}">${t.text}</span>`).join('');
+                
+                // Gender Color Logic
+                let genderClass = "text-slate-500";
+                if (g.femaleRatio > 60) genderClass = "text-pink-600 font-bold";
+                else if (g.femaleRatio < 40) genderClass = "text-blue-600 font-bold";
+
+                return `
+                <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+                    <td class="px-4 py-3 font-medium text-primary whitespace-nowrap">${g.name}</td>
+                    <td class="px-4 py-3 align-middle">${tagsHtml}</td>
+                    <td class="px-4 py-3 text-slate-600 text-xs leading-relaxed">${g.insightText}</td>
+                    <td class="px-4 py-3 text-right font-bold text-secondary">${g.mean.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-right text-slate-600">${g.median.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-right text-slate-600">${g.sd.toFixed(2)}</td>
+                    <td class="px-4 py-3 text-right text-slate-500 text-amber-700 font-bold">${g.southRatio.toFixed(0)}%</td>
+                    <td class="px-4 py-3 text-center ${genderClass}">${g.femaleRatio.toFixed(0)}% (F)</td>
+                </tr>
+            `}).join('');
+        }
+
+        function renderCharts(groups) {
+            const labels = groups.map(g => g.name);
+
+            // Chart 1: GPA
+            new Chart(document.getElementById('gpaChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'GPA 平均', data: groups.map(g => g.mean), backgroundColor: '#003566', borderRadius: 4, order: 2 },
+                        { label: '標準差', data: groups.map(g => g.sd), type: 'line', borderColor: '#fca311', borderWidth: 2, pointBackgroundColor: '#fff', yAxisID: 'y1', order: 1 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: { beginAtZero: false, min: 2.0, title: {display: true, text: 'GPA'} },
+                        y1: { type: 'linear', display: true, position: 'right', grid: {drawOnChartArea: false}, title: {display: true, text: '標準差 (SD)'} }
+                    }
+                }
+            });
+
+            const ratioTooltip = {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) label += ': ';
+                        let value = context.parsed.y;
+                        const group = groups[context.dataIndex];
+                        let count = 0;
+                        if (context.chart.canvas.id === 'locationChart') {
+                            if (context.datasetIndex === 0) count = group.southCount;
+                            if (context.datasetIndex === 1) count = group.northCount;
+                            if (context.datasetIndex === 2) count = group.otherCount;
+                        } else if (context.chart.canvas.id === 'genderChart') {
+                            if (context.datasetIndex === 0) count = group.maleCount;
+                            if (context.datasetIndex === 1) count = group.femaleCount;
+                        }
+                        return `${label}${value.toFixed(1)}% (${count}人)`;
+                    }
+                }
+            };
+
+            // Chart 2: Location
+            new Chart(document.getElementById('locationChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: '南部', data: groups.map(g => g.southRatio), backgroundColor: '#fca311' }, 
+                        { label: '北部', data: groups.map(g => g.northRatio), backgroundColor: '#003566' }, 
+                        { label: '其他', data: groups.map(g => g.otherRatio), backgroundColor: '#cbd5e1' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { x: { stacked: true }, y: { stacked: true, max: 100, title: {display: true, text: '百分比 (%)'} } },
+                    plugins: { legend: { display: false }, tooltip: ratioTooltip }
+                }
+            });
+
+            // Chart 3: Gender
+            new Chart(document.getElementById('genderChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: '男性', data: groups.map(g => g.maleRatio), backgroundColor: '#60a5fa' },
+                        { label: '女性', data: groups.map(g => g.femaleRatio), backgroundColor: '#f472b6' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { x: { stacked: true }, y: { stacked: true, max: 100, title: {display: true, text: '百分比 (%)'} } },
+                    plugins: { legend: { display: false }, tooltip: ratioTooltip }
+                }
+            });
+        }
+        
+        function exportTableToCSV() {
+            let csv = [];
+            csv.push('\uFEFF"群體名稱","特性標籤","分析簡評","GPA平均","中位數","標準差","南部占比(%)","女生占比(%)"');
+            const rows = document.querySelectorAll("#stats-table-body tr");
+            rows.forEach(row => {
+                const cols = row.querySelectorAll("td");
+                const name = cols[0].innerText;
+                const tags = Array.from(cols[1].querySelectorAll("span")).map(s => s.innerText).join("; ");
+                const insight = cols[2].innerText;
+                const mean = cols[3].innerText;
+                const median = cols[4].innerText;
+                const sd = cols[5].innerText;
+                const south = cols[6].innerText.replace('%', '');
+                const female = cols[7].innerText.replace('% (F)', '');
+                csv.push(`"${name}","${tags}","${insight}","${mean}","${median}","${sd}","${south}","${female}"`);
+            });
+            let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
+            let downloadLink = document.createElement("a");
+            downloadLink.download = "pgy_analysis_advanced.csv";
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+            downloadLink.style.display = "none";
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+        }
+
+        window.addEventListener('load', () => { initDashboard(); });
     </script>
 </body>
 </html>
