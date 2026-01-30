@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>115年度 PGY 甄選戰情室</title>
+    
+    <!-- 1. 載入 Tailwind CSS (樣式庫) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. 載入 React 核心 -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 3. 載入 Babel (讓瀏覽器看不懂的 JSX 語法變看得懂) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 4. 載入 Recharts 圖表庫依賴 -->
+    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+
+    <!-- 自定義樣式 -->
+    <style>
+        body { background-color: #f8fafc; font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+        .recharts-wrapper { margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- 5. React 應用程式邏輯 -->
+    <script type="text/babel">
+        const { useState } = React;
+        // 從全域變數解構 Recharts 元件
+        const { 
+            BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
+            ComposedChart, Line, Cell 
+        } = Recharts;
+
+        // --- 內嵌 SVG 圖示元件 (取代外部依賴，確保穩定性) ---
+        const IconUsers = ({size=24, className}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+        const IconAward = ({size=24, className}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>;
+        const IconMapPin = ({size=24, className}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
+        const IconTrendingUp = ({size=24, className}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
+        const IconAlertCircle = ({size=20, className}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+        const IconFileText = ({size=20, className}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>;
+        const IconDownload = ({size=16, className}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+        const IconArrowUpRight = ({size=16, className}) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>;
+
+        // --- 數據源 ---
+        const rawData = [
+            { group: '1', count: 25, gpa: 3.842, std: 0.312, south: 56.0, north: 20.0, female: 48.0, male: 52.0 },
+            { group: '2', count: 24, gpa: 3.795, std: 0.354, south: 45.8, north: 29.2, female: 50.0, male: 50.0 },
+            { group: '3', count: 20, gpa: 3.882, std: 0.320, south: 60.0, north: 15.0, female: 45.0, male: 55.0 },
+            { group: '4', count: 19, gpa: 3.815, std: 0.385, south: 52.6, north: 26.3, female: 42.1, male: 57.9 },
+            { group: '5', count: 25, gpa: 3.755, std: 0.365, south: 48.0, north: 24.0, female: 40.0, male: 60.0 },
+            { group: '6', count: 25, gpa: 3.805, std: 0.342, south: 52.0, north: 28.0, female: 36.0, male: 64.0 },
+            { group: '7', count: 25, gpa: 3.788, std: 0.395, south: 44.0, north: 36.0, female: 44.0, male: 56.0 },
+            { group: '8', count: 25, gpa: 3.825, std: 0.305, south: 56.0, north: 20.0, female: 56.0, male: 44.0 },
+            { group: '9', count: 23, gpa: 3.790, std: 0.330, south: 56.5, north: 17.4, female: 52.2, male: 47.8 },
+            { group: '10', count: 24, gpa: 3.810, std: 0.355, south: 50.0, north: 29.2, female: 41.7, male: 58.3 },
+        ];
+
+        // --- 元件區 ---
+        const Card = ({ title, value, subtext, icon: Icon, trend }) => (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow duration-300">
+                <div className="flex justify-between items-start mb-4">
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                        <Icon className="text-[#003566]" size={24} />
+                    </div>
+                    {trend === 'up' && (
+                        <span className="flex items-center text-sm font-medium text-green-600">
+                            <IconArrowUpRight className="mr-1" size={16} /> 優勢
+                        </span>
+                    )}
+                </div>
+                <h3 className="text-slate-500 text-sm font-medium mb-1">{title}</h3>
+                <div className="text-3xl font-bold text-[#003566] mb-1 font-['Inter']">{value}</div>
+                <p className="text-sm text-slate-400">{subtext}</p>
+            </div>
+        );
+
+        const SectionTitle = ({ title, subtitle }) => (
+            <div className="mb-8 border-l-4 border-[#fca311] pl-4">
+                <h2 className="text-2xl font-bold text-[#003566] mb-2">{title}</h2>
+                <p className="text-slate-500">{subtitle}</p>
+            </div>
+        );
+
+        // --- 主程式 App ---
+        const App = () => {
+            // 計算總體指標
+            const totalCandidates = rawData.reduce((acc, cur) => acc + cur.count, 0);
+            const avgTotalGPA = (rawData.reduce((acc, cur) => acc + cur.gpa * cur.count, 0) / totalCandidates).toFixed(3);
+            const avgSouthRatio = (rawData.reduce((acc, cur) => acc + cur.south * cur.count, 0) / totalCandidates).toFixed(1);
+
+            return (
+                <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-800 pb-12">
+                    
+                    {/* Navigation */}
+                    <nav className="sticky top-0 z-50 bg-[#003566]/95 backdrop-blur-sm text-white shadow-lg mb-8">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex items-center justify-between h-16">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-[#fca311] p-1.5 rounded text-[#003566]">
+                                        <IconFileText size={20} />
+                                    </div>
+                                    <span className="font-bold text-lg tracking-wide">115年度 PGY 甄選戰情室</span>
+                                </div>
+                                <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-blue-100">
+                                    <span className="cursor-pointer hover:text-[#fca311] transition-colors">總覽概況</span>
+                                    <span className="cursor-pointer hover:text-[#fca311] transition-colors">分組分析</span>
+                                    <span className="cursor-pointer hover:text-[#fca311] transition-colors">策略洞察</span>
+                                    <button className="bg-[#fca311] text-[#003566] px-4 py-2 rounded-full font-bold hover:bg-[#ffb700] transition-colors flex items-center gap-2">
+                                        <IconDownload size={16} /> 匯出報告
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+                        {/* 1. Hero Metrics */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <Card title="總甄選人數" value={totalCandidates} subtext="有效分組名單" icon={IconUsers} />
+                            <Card title="平均 GPA" value={avgTotalGPA} subtext="4.3 分制標準化" icon={IconAward} trend="up" />
+                            <Card title="南部生源佔比" value={`${avgSouthRatio}%`} subtext="嘉南高屏地區" icon={IconMapPin} trend="up" />
+                            <Card title="關注組別" value="Group 3 & 7" subtext="菁英組 vs 高變異組" icon={IconTrendingUp} />
+                        </div>
+
+                        {/* 2. Academic Performance Analysis */}
+                        <section className="bg-white rounded-2xl p-8 shadow-sm">
+                            <SectionTitle title="各組學業表現分析 (Academic Profile)" subtitle="藍色長條代表平均 GPA，琥珀色折線代表該組成績標準差（離散程度）" />
+                            <div className="h-[400px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={rawData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                        <XAxis dataKey="group" label={{ value: '組別', position: 'insideBottom', offset: -5 }} stroke="#64748b" />
+                                        <YAxis yAxisId="left" domain={[3.7, 4.0]} label={{ value: 'GPA', angle: -90, position: 'insideLeft' }} stroke="#003566" />
+                                        <YAxis yAxisId="right" orientation="right" domain={[0.2, 0.5]} label={{ value: '標準差', angle: 90, position: 'insideRight' }} stroke="#fca311" />
+                                        <Tooltip contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                                        <Legend />
+                                        <Bar yAxisId="left" dataKey="gpa" name="平均 GPA" fill="#003566" radius={[4, 4, 0, 0]} barSize={40}>
+                                            {rawData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.group === '3' ? '#fca311' : '#003566'} />
+                                            ))}
+                                        </Bar>
+                                        <Line yAxisId="right" type="monotone" dataKey="std" name="標準差 (異質性)" stroke="#fca311" strokeWidth={3} dot={{ r: 4 }} />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="mt-4 p-4 bg-blue-50 rounded-lg flex items-start gap-3">
+                                <IconAlertCircle className="text-[#003566] shrink-0 mt-0.5" size={20} />
+                                <p className="text-sm text-[#003566]">
+                                    <strong>重點觀察：</strong> 第 3 組以 <span className="font-bold">3.882</span> 的平均 GPA 位居榜首（圖中黃色長條），且標準差適中，為本屆「學霸組」。第 7 組標準差最高 (0.395)，顯示組內成員實力落差較大。
+                                </p>
+                            </div>
+                        </section>
+
+                        {/* 3. Demographics & Strategy */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Region Strategy */}
+                            <section className="bg-white rounded-2xl p-8 shadow-sm">
+                                <SectionTitle title="地緣戰略佈局 (Region)" subtitle="南部（在地留任潛力） vs 北部（回流挑戰）" />
+                                <div className="h-[300px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={rawData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
+                                            <XAxis type="number" domain={[0, 100]} hide />
+                                            <YAxis dataKey="group" type="category" width={40} tick={{fill: '#64748b'}} />
+                                            <Tooltip cursor={{fill: 'transparent'}} />
+                                            <Legend iconType="circle" />
+                                            <Bar dataKey="south" name="南部佔比 %" stackId="a" fill="#003566" barSize={20} />
+                                            <Bar dataKey="north" name="北部佔比 %" stackId="a" fill="#fca311" barSize={20} />
+                                            <Bar dataKey={(d) => 100 - d.south - d.north} name="其他地區" stackId="a" fill="#e2e8f0" barSize={20} radius={[0, 4, 4, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </section>
+
+                            {/* Gender Balance */}
+                            <section className="bg-white rounded-2xl p-8 shadow-sm">
+                                <SectionTitle title="性別結構 (Gender)" subtitle="各組別男女性別比例分佈" />
+                                <div className="h-[300px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={rawData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                            <XAxis dataKey="group" tick={{fill: '#64748b'}} />
+                                            <YAxis hide />
+                                            <Tooltip />
+                                            <Legend iconType="circle" />
+                                            <Bar dataKey="female" name="女性 %" stackId="a" fill="#ec4899" barSize={30} radius={[0, 0, 4, 4]} />
+                                            <Bar dataKey="male" name="男性 %" stackId="a" fill="#3b82f6" barSize={30} radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </section>
+                        </div>
+
+                        {/* 4. Action Plan */}
+                        <section className="bg-gradient-to-br from-[#003566] to-[#004e92] rounded-3xl p-10 text-white shadow-xl">
+                            <div className="flex flex-col md:flex-row gap-8 items-start">
+                                <div className="flex-1">
+                                    <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
+                                        <div className="bg-[#fca311] p-2 rounded-lg text-[#003566]">
+                                            <IconTrendingUp size={24} />
+                                        </div>
+                                        策略建議與行動 (Action Plan)
+                                    </h2>
+                                    <div className="space-y-6">
+                                        <div className="flex gap-4">
+                                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold text-[#fca311] shrink-0">1</div>
+                                            <div>
+                                                <h4 className="text-xl font-semibold mb-2 text-[#fca311]">針對「第 3 組」的菁英留任計畫</h4>
+                                                <p className="text-blue-100 leading-relaxed">
+                                                    該組平均 GPA 最高 (3.88) 且南部生源佔 60%。建議指派資深 Mentor 進行面談，強調本院學術資源與升遷管道，鎖定這批高潛力且具地緣黏著度的候選人。
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-4">
+                                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold text-[#fca311] shrink-0">2</div>
+                                            <div>
+                                                <h4 className="text-xl font-semibold mb-2 text-[#fca311]">針對「第 7 組」的北部人才吸納</h4>
+                                                <p className="text-blue-100 leading-relaxed">
+                                                    該組北部生源比例最高 (36%) 且成績異質性大。建議在面試環節主動說明宿舍福利、高鐵交通補助及台南生活機能，降低其南漂的不確定感。
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="w-full md:w-80 bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+                                    <h3 className="font-bold text-lg mb-4">下載詳細數據</h3>
+                                    <p className="text-sm text-blue-200 mb-6">包含所有組別的 GPA 原始數據、生源地清單及聯絡資訊。</p>
+                                    <button className="w-full bg-[#fca311] text-[#003566] font-bold py-3 rounded-xl hover:bg-[#ffb700] transition-transform active:scale-95 flex items-center justify-center gap-2">
+                                        <IconDownload size={18} />
+                                        匯出 Excel 報表
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <footer className="text-center text-slate-400 py-8 text-sm">
+                            <p>© 2026 PGY 甄選委員會 | Designed by Your Executive Assistant</p>
+                        </footer>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
