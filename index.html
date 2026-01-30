@@ -199,7 +199,8 @@
                         <tr>
                             <th class="px-4 py-3 min-w-[100px]">群體名稱</th>
                             <th class="px-4 py-3 min-w-[200px]">AI 特性標籤</th>
-                            <th class="px-4 py-3 min-w-[250px]">資質與結構簡評</th>
+                            <th class="px-4 py-3 min-w-[200px]">資質與結構簡評</th>
+                            <th class="px-4 py-3 min-w-[250px] text-indigo-700 bg-indigo-50/50">考官重點建議</th>
                             <th class="px-4 py-3 text-right">GPA 平均</th>
                             <th class="px-4 py-3 text-right text-slate-600">中位數</th>
                             <th class="px-4 py-3 text-right text-slate-600">標準差</th>
@@ -410,6 +411,23 @@
                 if (g.northRatio > 50) comments.push("；北區考生過半");
 
                 g.insightText = comments.join("");
+                
+                // --- Examiner Recommendation Logic ---
+                let recommendation = "";
+                if (stability === "Volatile") {
+                    recommendation = "⚖️ 組內落差大，請面試官務必回歸絕對標準，避免受前後考生的對比效應(Contrast Effect)影響判斷。";
+                } else if (performance === "Low") {
+                    recommendation = "🛡️ 整體程度偏弱，建議多追問臨床情境題，嚴格鑑別考生的基礎知識、抗壓性與受訓潛力。";
+                } else if (performance === "High" && stability === "Stable") {
+                    recommendation = "💎 績優且穩定，建議面試重點放在人格特質、溝通技巧與領導潛能，挖掘核心人才。";
+                } else if (g.mean < g.median * (1 - skewThreshold)) {
+                    recommendation = "📉 受少數低分拉低均值，中位數考生程度尚可，請避免因極端值對整組產生負面定錨。";
+                } else if (g.mean > g.median * (1 + skewThreshold)) {
+                    recommendation = "📈 受少數高分拉高均值，請仔細檢視中段考生實際能力，避免高估整體水平。";
+                } else {
+                    recommendation = "✅ 資質分佈常態，程度適中，建議依照標準面試結構進行綜合評估即可。";
+                }
+                g.examinerNote = recommendation;
             });
 
             groupStats.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant-TW', { numeric: true }));
@@ -444,6 +462,7 @@
                     <td class="px-4 py-3 font-medium text-primary whitespace-nowrap">${g.name}</td>
                     <td class="px-4 py-3 align-middle">${tagsHtml}</td>
                     <td class="px-4 py-3 text-slate-600 text-xs leading-relaxed">${g.insightText}</td>
+                    <td class="px-4 py-3 text-sm text-slate-700 bg-indigo-50/30 border-l border-slate-100">${g.examinerNote}</td>
                     <td class="px-4 py-3 text-right font-bold text-secondary">${g.mean.toFixed(2)}</td>
                     <td class="px-4 py-3 text-right text-slate-600">${g.median.toFixed(2)}</td>
                     <td class="px-4 py-3 text-right text-slate-600">${g.sd.toFixed(2)}</td>
@@ -538,19 +557,20 @@
         
         function exportTableToCSV() {
             let csv = [];
-            csv.push('\uFEFF"群體名稱","特性標籤","分析簡評","GPA平均","中位數","標準差","南部占比(%)","女生占比(%)"');
+            csv.push('\uFEFF"群體名稱","特性標籤","分析簡評","考官重點建議","GPA平均","中位數","標準差","南部占比(%)","女生占比(%)"');
             const rows = document.querySelectorAll("#stats-table-body tr");
             rows.forEach(row => {
                 const cols = row.querySelectorAll("td");
                 const name = cols[0].innerText;
                 const tags = Array.from(cols[1].querySelectorAll("span")).map(s => s.innerText).join("; ");
                 const insight = cols[2].innerText;
-                const mean = cols[3].innerText;
-                const median = cols[4].innerText;
-                const sd = cols[5].innerText;
-                const south = cols[6].innerText.replace('%', '');
-                const female = cols[7].innerText.replace('% (F)', '');
-                csv.push(`"${name}","${tags}","${insight}","${mean}","${median}","${sd}","${south}","${female}"`);
+                const examinerNote = cols[3].innerText; // New Column
+                const mean = cols[4].innerText;
+                const median = cols[5].innerText;
+                const sd = cols[6].innerText;
+                const south = cols[7].innerText.replace('%', '');
+                const female = cols[8].innerText.replace('% (F)', '');
+                csv.push(`"${name}","${tags}","${insight}","${examinerNote}","${mean}","${median}","${sd}","${south}","${female}"`);
             });
             let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
             let downloadLink = document.createElement("a");
