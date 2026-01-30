@@ -51,10 +51,10 @@
 <body class="text-slate-800">
 
     <!-- Loading Screen -->
-    <div id="loading" class="fixed inset-0 bg-primary/90 z-50 flex flex-col items-center justify-center text-white">
+    <div id="loading" class="fixed inset-0 bg-primary/90 z-50 flex flex-col items-center justify-center text-white text-center px-4">
         <div class="loading-spinner mb-4"></div>
         <h2 class="text-xl font-bold">正在讀取 2026 PGY 甄選資料...</h2>
-        <p class="text-sm opacity-80 mt-2">分析樣本總數：235</p>
+        <p class="text-sm opacity-80 mt-2" id="loading-hint">正在連線至雲端資料庫</p>
     </div>
 
     <!-- Main Container -->
@@ -64,7 +64,7 @@
         <header class="mb-8 border-l-4 border-secondary pl-4 flex flex-col md:flex-row md:justify-between md:items-end">
             <div>
                 <h1 class="text-3xl font-bold text-primary">2026 PGY 甄選報名資料分析儀表板</h1>
-                <p class="text-slate-500 mt-1">深度資質分析：均值/中位數偏態偵測 | 性別結構 | 北部生源偵測</p>
+                <p class="text-slate-500 mt-1">深度資質分析：均值/中位數偏態偵測 | 性別結構 | 南北生源分佈</p>
             </div>
             <div class="mt-4 md:mt-0 text-right">
                 <span class="text-xs bg-primary text-white px-2 py-1 rounded">2026 Selection</span>
@@ -76,7 +76,7 @@
             <div class="card p-6 border-t-4 border-primary">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">總樣本數 (有效組別)</p>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">總報名人數</p>
                         <h3 class="text-3xl font-bold text-primary mt-1" id="total-students">0</h3>
                     </div>
                     <div class="p-2 bg-blue-50 rounded-lg text-primary">
@@ -100,9 +100,9 @@
             <div class="card p-6 border-t-4 border-secondary">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">南部生源總佔比</p>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">南部生源佔比</p>
                         <h3 class="text-3xl font-bold text-secondary mt-1" id="south-ratio">0%</h3>
-                        <p class="text-xs text-slate-400 mt-1">包含台南及其他南部</p>
+                        <p class="text-xs text-slate-400 mt-1">含台南及其他南部</p>
                     </div>
                     <div class="p-2 bg-amber-50 rounded-lg text-secondary">
                         <i class="ph ph-house-line text-2xl"></i>
@@ -194,12 +194,12 @@
                 </button>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
+                <table class="w-full text-sm text-left border-collapse">
                     <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b">
                         <tr>
                             <th class="px-4 py-3 min-w-[100px]">群體名稱</th>
                             <th class="px-4 py-3 min-w-[150px]">特性標籤</th>
-                            <th class="px-4 py-3 min-w-[400px]">綜合分析與面試指引</th>
+                            <th class="px-4 py-3 min-w-[380px]">綜合分析與面試指引</th>
                             <th class="px-4 py-3 text-right">GPA 平均</th>
                             <th class="px-4 py-3 text-right text-slate-600">中位數</th>
                             <th class="px-4 py-3 text-right text-slate-600">標準差</th>
@@ -222,6 +222,7 @@
 
     <script>
         // --- 1. Configuration & Utils ---
+        // 核心連結：未來若更換資料表，請修改此處。
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR4AS_Mdx_cY9qfwgqmRzpg61obLy1J9axVSiTLBtN3_CBK5ciycko2ik_DtsZsMA/pub?gid=879652844&single=true&output=csv';
 
         const NORTH_CITIES = ['基隆', '台北', '臺北', '新北', '桃園', '新竹', '苗栗', '台中', '臺中', '彰化', '南投', '宜蘭'];
@@ -263,7 +264,7 @@
                 },
                 error: function(err) {
                     console.error(err);
-                    alert("資料讀取失敗。");
+                    document.getElementById('loading-hint').innerText = "連線失敗，請檢查網路或 Google Sheet 發布權限。";
                 }
             });
         }
@@ -404,8 +405,7 @@
                     recommendation = "✅ 建議：依照標準面試流程執行綜合評選即可。";
                 }
                 
-                g.combinedInsight = `<div class="font-medium text-slate-700">${summary}</div><div class="mt-1 text-indigo-700 text-[0.8rem] italic">${recommendation}</div>`;
-                g.rawCombinedInsight = `${summary} ${recommendation}`; // for CSV
+                g.combinedInsight = `<div class="font-medium text-slate-700">${summary}</div><div class="mt-1 text-indigo-700 text-[0.8rem] italic leading-tight">${recommendation}</div>`;
             });
 
             groupStats.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant-TW', { numeric: true }));
