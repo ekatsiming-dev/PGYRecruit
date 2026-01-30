@@ -45,7 +45,7 @@
         .tag-green { background: #d1fae5; color: #047857; }
         .tag-slate { background: #f1f5f9; color: #475569; }
         .tag-red { background: #fee2e2; color: #b91c1c; }
-        .tag-pink { background: #fce7f3; color: #be185d; } /* New Pink Style */
+        .tag-pink { background: #fce7f3; color: #be185d; }
     </style>
 </head>
 <body class="text-slate-800">
@@ -185,9 +185,9 @@
             <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <h3 class="text-lg font-bold text-primary flex items-center">
-                        <i class="ph ph-lightning mr-2 text-secondary"></i> PGY 各組特性智能分析
+                        <i class="ph ph-lightning mr-2 text-secondary"></i> PGY 各組特性與面試指引
                     </h3>
-                    <p class="text-xs text-slate-400 mt-1">包含資質偏態分析(均值vs中位數)、性別與地緣特性</p>
+                    <p class="text-xs text-slate-400 mt-1">整合資質偏態分析與考官面試策略建議</p>
                 </div>
                 <button onclick="exportTableToCSV()" class="text-sm bg-primary text-white px-4 py-2 rounded hover:bg-blue-800 transition shadow-sm">
                     <i class="ph ph-download-simple mr-1"></i> 匯出分析報告
@@ -198,9 +198,8 @@
                     <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b">
                         <tr>
                             <th class="px-4 py-3 min-w-[100px]">群體名稱</th>
-                            <th class="px-4 py-3 min-w-[200px]">AI 特性標籤</th>
-                            <th class="px-4 py-3 min-w-[200px]">資質與結構簡評</th>
-                            <th class="px-4 py-3 min-w-[250px] text-indigo-700 bg-indigo-50/50">考官重點建議</th>
+                            <th class="px-4 py-3 min-w-[150px]">特性標籤</th>
+                            <th class="px-4 py-3 min-w-[400px]">綜合分析與面試指引</th>
                             <th class="px-4 py-3 text-right">GPA 平均</th>
                             <th class="px-4 py-3 text-right text-slate-600">中位數</th>
                             <th class="px-4 py-3 text-right text-slate-600">標準差</th>
@@ -331,11 +330,9 @@
                 else if (gender && (gender.includes('女') || gender.toLowerCase().startsWith('f'))) groups[groupKey].femaleCount++;
             });
 
-            // Calculate Overall Stats
             const overallMean = globalGPA.length > 0 ? (globalGPA.reduce((a, b) => a + b, 0) / globalGPA.length) : 0;
             const overallSD = globalGPA.length > 0 ? calculateStandardDeviation(globalGPA) : 0;
             
-            // Calculate Group Stats first to get avgSD
             let groupStats = Object.values(groups).map(g => {
                 const mean = g.gpaList.length > 0 ? (g.gpaList.reduce((a, b) => a + b, 0) / g.gpaList.length) : 0;
                 const median = g.gpaList.length > 0 ? calculateMedian(g.gpaList) : 0;
@@ -355,16 +352,11 @@
                 };
             });
 
-            // Calculate Global Average SD to determine what is "Stable" vs "Volatile"
             const validSDs = groupStats.map(g => g.sd).filter(sd => sd > 0);
             const globalAvgSD = validSDs.length > 0 ? (validSDs.reduce((a, b) => a + b, 0) / validSDs.length) : 0;
 
-            // --- AI Insight Logic Refined ---
             groupStats.forEach(g => {
                 g.tags = [];
-                g.insightText = "";
-
-                // 1. Aptitude Analysis (Mean + SD)
                 let performance = "";
                 if (g.mean > overallMean * 1.02) performance = "High";
                 else if (g.mean < overallMean * 0.98) performance = "Low";
@@ -375,59 +367,45 @@
                 else if (g.sd > globalAvgSD * 1.1) stability = "Volatile"; 
                 else stability = "Normal";
 
-                // Generate Tags for Performance/Stability
                 if (performance === "High" && stability === "Stable") g.tags.push({text: '績優穩定', type: 'blue'});
                 else if (performance === "High") g.tags.push({text: '績優但落差大', type: 'amber'});
                 else if (performance === "Low" && stability === "Stable") g.tags.push({text: '程度普遍偏弱', type: 'red'});
                 else if (performance === "Low") g.tags.push({text: '成績偏弱且不穩', type: 'red'});
                 else if (stability === "Volatile") g.tags.push({text: '組內落差懸殊', type: 'amber'});
-                // REMOVED: else g.tags.push({text: '資質平均', type: 'slate'});
 
-                // 2. Skewness Analysis (Mean vs Median) - TAGS REMOVED
                 const skewThreshold = 0.02;
-
-                // 3. Geography (Only highlight Northern)
                 if (g.northRatio > 50) g.tags.push({text: '北區生源', type: 'slate'});
 
-                // 4. Gender (Pink/Blue logic) - TAGS REMOVED (Handled in table)
+                // --- Integrated Analysis & Examiner Note ---
+                let summary = "";
+                if (performance === "High") summary += "資質優於全體";
+                else if (performance === "Low") summary += "資質低於全體";
+                else summary += "資質與全體持平";
 
-                // Construct Text (NO GENDER DESCRIPTION)
-                let comments = [];
+                if (stability === "Stable") summary += "且程度整齊";
+                else if (stability === "Volatile") summary += "但落差較大";
+
+                if (g.mean < g.median * (1 - skewThreshold)) summary += "，受低分群拉低均值";
+                else if (g.mean > g.median * (1 + skewThreshold)) summary += "，受高分群拉抬均值";
                 
-                // Aptitude Comment
-                if (performance === "High") comments.push("平均優於全體");
-                else if (performance === "Low") comments.push("平均低於全體");
-                else comments.push("平均與全體持平");
+                if (g.northRatio > 50) summary += "，北區生源過半。";
+                else summary += "。";
 
-                if (stability === "Stable") comments.push("且程度整齊");
-                else if (stability === "Volatile") comments.push("但組內落差較大");
-                else comments.push("且分佈常態");
-
-                // Skewness Comment
-                if (g.mean < g.median * (1 - skewThreshold)) comments.push("；留意少數低分拉低均值");
-                else if (g.mean > g.median * (1 + skewThreshold)) comments.push("；均值受少數高分拉抬");
-
-                // Geo Comment
-                if (g.northRatio > 50) comments.push("；北區考生過半");
-
-                g.insightText = comments.join("");
-                
-                // --- Examiner Recommendation Logic ---
                 let recommendation = "";
                 if (stability === "Volatile") {
-                    recommendation = "⚖️ 組內落差大，請面試官務必回歸絕對標準，避免受前後考生的對比效應(Contrast Effect)影響判斷。";
+                    recommendation = "⚖️ 提醒：組內程度不一，請避免受對比效應影響評分。";
                 } else if (performance === "Low") {
-                    recommendation = "🛡️ 整體程度偏弱，建議多追問臨床情境題，嚴格鑑別考生的基礎知識、抗壓性與受訓潛力。";
+                    recommendation = "🛡️ 建議：強化臨床情境題與受訓潛力之面談。";
                 } else if (performance === "High" && stability === "Stable") {
-                    recommendation = "💎 績優且穩定，建議面試重點放在人格特質、溝通技巧與領導潛能，挖掘核心人才。";
+                    recommendation = "💎 績優組：建議側重於領導潛能與人格特質之挖掘。";
                 } else if (g.mean < g.median * (1 - skewThreshold)) {
-                    recommendation = "📉 受少數低分拉低均值，中位數考生程度尚可，請避免因極端值對整組產生負面定錨。";
-                } else if (g.mean > g.median * (1 + skewThreshold)) {
-                    recommendation = "📈 受少數高分拉高均值，請仔細檢視中段考生實際能力，避免高估整體水平。";
+                    recommendation = "📉 提醒：避免因少數極端低分對該組產生定錨偏誤。";
                 } else {
-                    recommendation = "✅ 資質分佈常態，程度適中，建議依照標準面試結構進行綜合評估即可。";
+                    recommendation = "✅ 建議：依照標準面試流程執行綜合評選即可。";
                 }
-                g.examinerNote = recommendation;
+                
+                g.combinedInsight = `<div class="font-medium text-slate-700">${summary}</div><div class="mt-1 text-indigo-700 text-[0.8rem] italic">${recommendation}</div>`;
+                g.rawCombinedInsight = `${summary} ${recommendation}`; // for CSV
             });
 
             groupStats.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant-TW', { numeric: true }));
@@ -439,11 +417,9 @@
             document.getElementById('main-content').classList.remove('opacity-0');
 
             const overallMean = globalGPA.length > 0 ? (globalGPA.reduce((a, b) => a + b, 0) / globalGPA.length).toFixed(2) : "0.00";
-            
             document.getElementById('total-students').innerText = totalCount;
             document.getElementById('overall-gpa').innerText = overallMean;
             document.getElementById('south-ratio').innerText = (globalSouth / totalCount * 100).toFixed(0) + '%';
-            // Update Card 4: Overall SD
             document.getElementById('overall-sd').innerText = overallSD.toFixed(2);
 
             renderCharts(groups);
@@ -451,8 +427,6 @@
             const tbody = document.getElementById('stats-table-body');
             tbody.innerHTML = groups.map(g => {
                 const tagsHtml = g.tags.map(t => `<span class="tag tag-${t.type}">${t.text}</span>`).join('');
-                
-                // Gender Color Logic
                 let genderClass = "text-slate-500";
                 if (g.femaleRatio > 60) genderClass = "text-pink-600 font-bold";
                 else if (g.femaleRatio < 40) genderClass = "text-blue-600 font-bold";
@@ -461,12 +435,11 @@
                 <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
                     <td class="px-4 py-3 font-medium text-primary whitespace-nowrap">${g.name}</td>
                     <td class="px-4 py-3 align-middle">${tagsHtml}</td>
-                    <td class="px-4 py-3 text-slate-600 text-xs leading-relaxed">${g.insightText}</td>
-                    <td class="px-4 py-3 text-sm text-slate-700 bg-indigo-50/30 border-l border-slate-100">${g.examinerNote}</td>
+                    <td class="px-4 py-3 leading-tight">${g.combinedInsight}</td>
                     <td class="px-4 py-3 text-right font-bold text-secondary">${g.mean.toFixed(2)}</td>
                     <td class="px-4 py-3 text-right text-slate-600">${g.median.toFixed(2)}</td>
                     <td class="px-4 py-3 text-right text-slate-600">${g.sd.toFixed(2)}</td>
-                    <td class="px-4 py-3 text-right text-slate-500 text-amber-700 font-bold">${g.southRatio.toFixed(0)}%</td>
+                    <td class="px-4 py-3 text-right text-amber-700 font-bold">${g.southRatio.toFixed(0)}%</td>
                     <td class="px-4 py-3 text-center ${genderClass}">${g.femaleRatio.toFixed(0)}% (F)</td>
                 </tr>
             `}).join('');
@@ -474,8 +447,6 @@
 
         function renderCharts(groups) {
             const labels = groups.map(g => g.name);
-
-            // Chart 1: GPA
             new Chart(document.getElementById('gpaChart'), {
                 type: 'bar',
                 data: {
@@ -517,7 +488,6 @@
                 }
             };
 
-            // Chart 2: Location
             new Chart(document.getElementById('locationChart'), {
                 type: 'bar',
                 data: {
@@ -536,7 +506,6 @@
                 }
             });
 
-            // Chart 3: Gender
             new Chart(document.getElementById('genderChart'), {
                 type: 'bar',
                 data: {
@@ -557,24 +526,23 @@
         
         function exportTableToCSV() {
             let csv = [];
-            csv.push('\uFEFF"群體名稱","特性標籤","分析簡評","考官重點建議","GPA平均","中位數","標準差","南部占比(%)","女生占比(%)"');
+            csv.push('\uFEFF"群體名稱","特性標籤","綜合分析與面試指引","GPA平均","中位數","標準差","南部占比(%)","女生占比(%)"');
             const rows = document.querySelectorAll("#stats-table-body tr");
             rows.forEach(row => {
                 const cols = row.querySelectorAll("td");
                 const name = cols[0].innerText;
                 const tags = Array.from(cols[1].querySelectorAll("span")).map(s => s.innerText).join("; ");
                 const insight = cols[2].innerText;
-                const examinerNote = cols[3].innerText; // New Column
-                const mean = cols[4].innerText;
-                const median = cols[5].innerText;
-                const sd = cols[6].innerText;
-                const south = cols[7].innerText.replace('%', '');
-                const female = cols[8].innerText.replace('% (F)', '');
-                csv.push(`"${name}","${tags}","${insight}","${examinerNote}","${mean}","${median}","${sd}","${south}","${female}"`);
+                const mean = cols[3].innerText;
+                const median = cols[4].innerText;
+                const sd = cols[5].innerText;
+                const south = cols[6].innerText.replace('%', '');
+                const female = cols[7].innerText.replace('% (F)', '');
+                csv.push(`"${name}","${tags}","${insight}","${mean}","${median}","${sd}","${south}","${female}"`);
             });
             let csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
             let downloadLink = document.createElement("a");
-            downloadLink.download = "pgy_analysis_advanced.csv";
+            downloadLink.download = "pgy_analysis_2026.csv";
             downloadLink.href = window.URL.createObjectURL(csvFile);
             downloadLink.style.display = "none";
             document.body.appendChild(downloadLink);
