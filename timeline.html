@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026PGY甄選 | Elegant Mode</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Google Fonts: Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 優雅版風格定義 */
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f9f8f6;
+            color: #2d3748;
+        }
+
+        /* 自定義捲軸 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 12px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+            border: 3px solid transparent;
+            background-clip: content-box;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background-color: #a94438;
+        }
+        
+        .elegant-card {
+            background: #ffffff;
+            border: 1px solid #edf2f7;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+            border-radius: 16px;
+        }
+
+        .active-task-soft {
+            background-color: #fff7ed;
+        }
+
+        /* Tooltip */
+        .tooltip-content {
+            opacity: 0;
+            visibility: hidden;
+            transform: translate(-50%, 8px) scale(0.95);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .group\/dot:hover .tooltip-content,
+        .group\/bar:hover .tooltip-content {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, 0) scale(1);
+        }
+
+        /* Today Line Highlight */
+        .today-highlight-bg {
+            background: linear-gradient(90deg, transparent 0%, rgba(169, 68, 56, 0.05) 50%, transparent 100%);
+        }
+
+        /* Sticky Column Shadow - 凍結窗格陰影 */
+        .sticky-col-shadow {
+            box-shadow: 6px 0 12px -4px rgba(0,0,0,0.08); /* 加深陰影 */
+            clip-path: inset(0 -15px 0 0); /* 僅顯示右側陰影 */
+        }
+        
+        /* 確保凍結欄位背景不透明，遮擋後方內容 */
+        .sticky-bg-fix {
+            background-color: white; 
+        }
+        .group:hover .sticky-bg-fix {
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .active-task-soft .sticky-bg-fix {
+            background-color: #fff7ed; /* orange-50 */
+        }
+
+        /* Corner Freeze Fix */
+        .corner-freeze {
+            position: sticky;
+            left: 0;
+            z-index: 50; /* 最高層級 */
+            background-color: #f9f8f6; /* 與 Header 同色 */
+        }
+
+        /* Holiday Pattern */
+        .bg-holiday-pattern {
+            background-color: #fee2e2;
+            background-image: repeating-linear-gradient(45deg, #fecaca 25%, transparent 25%, transparent 75%, #fecaca 75%, #fecaca), repeating-linear-gradient(45deg, #fecaca 25%, #fee2e2 25%, #fee2e2 75%, #fecaca 75%, #fecaca);
+            background-position: 0 0, 10px 10px;
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="h-screen p-4 md:p-6 flex flex-col gap-5 overflow-hidden bg-[#f9f8f6]">
+
+    <!-- Header -->
+    <div class="elegant-card p-5 flex flex-col md:flex-row justify-between items-start md:items-center relative overflow-hidden shrink-0">
+        <div class="z-10 flex items-center gap-4">
+            <div class="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                <i data-lucide="layers" class="w-6 h-6 text-[#a94438]"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-slate-800 tracking-wide flex items-center gap-3">
+                    2026PGY甄選
+                    <span class="text-xs font-normal text-white bg-[#a94438] px-2 py-0.5 rounded-full">Phase 2 備戰期</span>
+                </h1>
+                <p class="text-slate-500 text-sm mt-0.5 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    系統運作中 | 2026年1月31日
+                </p>
+            </div>
+        </div>
+
+        <!-- D-Day Counter & Stats -->
+        <div class="flex gap-6 mt-4 md:mt-0 z-10 mr-4 items-center">
+            
+            <!-- D-Day Countdown -->
+            <div class="flex items-center gap-3 bg-red-50 px-4 py-2 rounded-xl border border-red-100 shadow-sm">
+                <div class="text-right">
+                    <div class="text-[10px] text-red-400 font-bold uppercase tracking-wider">距離甄選日</div>
+                    <div class="text-xs text-red-300">2026/03/15</div>
+                </div>
+                <div class="text-3xl font-black text-[#a94438]" id="d-day-count">--</div>
+                <div class="text-xs text-red-400 font-bold self-end mb-1">天</div>
+            </div>
+
+            <div class="h-8 w-px bg-slate-200"></div>
+
+            <!-- Simple Stats -->
+            <div class="flex gap-5">
+                <div class="flex flex-col items-end">
+                    <span class="text-xs text-slate-400 font-medium uppercase tracking-wider">總任務</span>
+                    <span class="text-xl font-bold text-slate-700" id="total-tasks">0</span>
+                </div>
+                <div class="flex flex-col items-end">
+                    <span class="text-xs text-[#a94438] font-medium uppercase tracking-wider">需關注</span>
+                    <span class="text-xl font-bold text-[#a94438]" id="alert-count">0</span>
+                </div>
+                <div class="flex flex-col items-end">
+                    <span class="text-xs text-emerald-600 font-medium uppercase tracking-wider">已完成</span>
+                    <span class="text-xl font-bold text-emerald-600" id="completed-count">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex flex-col lg:flex-row gap-5 flex-1 min-h-0">
+        
+        <!-- Left Panel: Gantt Chart -->
+        <div class="lg:w-2/3 elegant-card flex flex-col overflow-hidden relative group">
+            <!-- Title Bar -->
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white z-50 shrink-0 shadow-[0_2px_4px_rgba(0,0,0,0.02)] relative">
+                <div class="flex items-center gap-4">
+                    <h2 class="font-bold text-base text-slate-700 flex items-center gap-2">
+                        <i data-lucide="calendar-range" class="w-5 h-5 text-slate-400"></i>
+                        專案進度總覽
+                    </h2>
+                    <button onclick="scrollToToday()" class="text-xs flex items-center gap-1 bg-[#a94438]/10 text-[#a94438] px-3 py-1.5 rounded-full hover:bg-[#a94438] hover:text-white transition-all font-bold cursor-pointer ring-1 ring-[#a94438]/20">
+                        <i data-lucide="crosshair" class="w-3 h-3"></i>
+                        定位今日 (1/31)
+                    </button>
+                </div>
+                
+                <!-- Legend -->
+                <div class="flex gap-4 text-xs hidden sm:flex text-slate-500">
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-[#a94438] rounded-full"></span>甄選日</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-red-100 border border-red-200 rounded-sm"></span>春節連假</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-slate-600 rounded-sm"></span>官方時程</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-white border border-slate-300 rounded-sm"></span>一般任務</span>
+                </div>
+            </div>
+            
+            <!-- Horizontal Scrollable Container -->
+            <div class="flex-1 overflow-auto custom-scrollbar relative bg-slate-50/30 scroll-smooth" id="gantt-scroll-area">
+                <!-- Inner Width Wrapper: 2800px -->
+                <div class="min-w-[2800px] pb-12 h-full flex flex-col relative">
+                    
+                    <!-- Timeline Header (Sticky Top + Corner Freeze) -->
+                    <div id="timeline-header" class="flex text-xs font-bold text-slate-400 border-b border-slate-200 sticky top-0 bg-[#f9f8f6]/95 backdrop-blur-md z-40 shadow-sm h-12 items-center">
+                        <!-- Corner Piece: Sticky Left & Top (Width 256px/w-64) -->
+                        <div class="corner-freeze w-64 h-full flex items-center justify-center text-slate-500 bg-[#f9f8f6] border-r border-slate-200 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)] shrink-0 font-bold tracking-widest uppercase">
+                            專案任務
+                        </div>
+                        <!-- Month Columns -->
+                        <div id="months-container" class="flex-1 flex h-full items-center">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Grid Lines Background -->
+                    <!-- Left margin matches sticky column width (256px = 16rem) -->
+                    <div id="timeline-grid" class="absolute top-12 left-64 right-6 bottom-0 z-0 flex pointer-events-none border-l border-slate-200/50">
+                        <!-- Injected by JS -->
+                    </div>
+
+                    <!-- Today Line -->
+                    <div id="today-line" class="absolute top-12 bottom-0 w-px bg-[#a94438] z-30 pointer-events-none border-l-2 border-dotted border-[#a94438] shadow-[0_0_15px_rgba(169,68,56,0.3)] transition-all duration-500">
+                         <div class="absolute top-0 bottom-0 -left-12 w-24 today-highlight-bg pointer-events-none"></div>
+                         <div class="absolute -top-3 -left-12 bg-[#a94438] text-white text-[11px] px-3 py-1.5 rounded-full shadow-lg whitespace-nowrap font-bold flex items-center gap-1.5 z-50 transform scale-100 border-2 border-white ring-2 ring-[#a94438]/20">
+                            <i data-lucide="clock" class="w-3 h-3"></i>
+                            Today 1/31
+                        </div>
+                    </div>
+
+                    <!-- Tasks List -->
+                    <div id="tasks-container" class="space-y-2 relative z-10 mt-4 pb-20">
+                        <!-- Tasks will be injected here via JS -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Scroll Hint -->
+            <div id="scroll-hint" class="absolute bottom-4 right-6 pointer-events-none transition-opacity duration-500 bg-white/80 backdrop-blur px-3 py-1 rounded-full border border-slate-200 shadow-sm text-xs text-slate-500 flex items-center gap-2 z-50">
+                <i data-lucide="arrow-left-right" class="w-3 h-3"></i> 左右滑動查看完整時間軸
+            </div>
+        </div>
+
+        <!-- Right Panel: Details -->
+        <div class="lg:w-1/3 elegant-card flex flex-col overflow-hidden relative bg-white">
+            <div id="detail-panel-content" class="flex flex-col h-full relative">
+                <!-- Empty State -->
+                <div class="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center bg-slate-50/50">
+                    <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-slate-100">
+                        <i data-lucide="layout-template" class="w-8 h-8 text-slate-300"></i>
+                    </div>
+                    <p class="text-base font-medium text-slate-600">準備就緒</p>
+                    <p class="text-sm mt-2 text-slate-400">點擊左側任務以檢視詳細執行策略</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Configuration ---
+        const startDate = new Date("2025-11-01"); 
+        const endDate = new Date("2026-05-31"); 
+        const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24) + 1; 
+
+        // Current Date for Simulation
+        const currentDate = new Date("2026-01-31");
+        const selectionDate = new Date("2026-03-15");
+
+        const months = [
+            { name: "11月 (NOV '25)", days: 30 },
+            { name: "12月 (DEC '25)", days: 31 },
+            { name: "1月 (JAN '26)", days: 31 },
+            { name: "2月 (FEB)", days: 28 },
+            { name: "3月 (MAR)", days: 31 },
+            { name: "4月 (APR)", days: 30 },
+            { name: "5月 (MAY)", days: 31 }
+        ];
+
+        // --- Data Sources ---
+        const manualData = {
+            "phase0": {
+                title: "Phase 0｜面試前：期待建立",
+                mindset: "核心共識：降低不確定性。讓對方覺得「奇美很懂流程、很尊重人」。",
+                do: ["提供「一頁式流程說明」", "明確說明「評估原則」", "提供可選擇的資訊深度"],
+                dont: ["不要寄超長宣傳文", "不要在邀請信預設親密", "不要問情緒性問題"],
+                say: ["「今天流程會很清楚，你只要準時到就好。」", "「面試是雙向了解；你也在評估我們的訓練環境。」", "「如有任何流程疑問，可直接問承辦窗口。」"],
+                avoid: ["「你一定要來喔！我們很希望你加入！」（太黏）", "「奇美是最棒的選擇！」（宣傳感）", "「你來就知道我們多好」（不具體）"],
+                micro: "Email 主旨清楚：時間＋地點＋必要資訊 (e.g., PGY甄選流程一頁式_2026.pdf)"
+            },
+            "phase1": {
+                title: "Phase 1｜到院報到：第一印象",
+                mindset: "核心共識：克制的溫度。Z 世代偏好低刺激，目標是「順暢、安靜、不打擾」。",
+                do: ["第一句話：叫名字 ＋ 確認是否需要協助 (Service Standard)", "流程動線「可視化」（小立牌/箭頭/地圖）", "等候區保持安靜、座位間距寬、不一直廣播宣傳片"],
+                dont: ["不要列隊歡迎、拍照打卡、大聲喊口號", "不要在報到處問私領域問題（住哪、感情）", "不要用「你終於來了！」這種過度熟絡語氣"],
+                say: ["「廖○○您好，今天辛苦你特地來。報到很快，這邊請。」", "「如果你想先坐一下、喝水都可以，流程會準時開始。」"],
+                avoid: ["「哇你本人比照片好看」（易踩雷）", "「我們很缺人，你來太好了」（直接扣分）"],
+                micro: "等候區小卡：「今天流程」、「你可以先放鬆」、「不需準備額外資料」"
+            },
+            "phase2": {
+                title: "Phase 2｜正式面試：對話建立",
+                mindset: "核心共識：尊嚴感 ＋ 雙向評估。讓考生覺得「這間醫院在看我怎麼思考，而不是抓錯」。",
+                do: ["開場固定一句：「雙向了解」＋「不刁鑽」", "以「情境＋反思」為主，不以背答案為主", "非語言訊號：點頭、停頓、不打斷、不嘲諷"],
+                dont: ["不要做壓力面試或羞辱式追問", "不要拿他跟別人比較", "不要暗示「你應該選我們」"],
+                say: ["「今天主要是互相了解，你也在了解奇美。我們想聽的是你怎麼想。」", "「這題沒有標準答案，你可以用你真實的經驗說。」", "「謝謝你分享。無論最後選擇哪裡，希望你找到最適合成長的地方。」"],
+                avoid: ["「你為什麼不選我們？」（逼表態）", "「你這樣想不對吧？」（否定式）", "「我們奇美很操喔你受得了嗎？」（恐嚇式測試）"],
+                micro: "面試官最後一句「謝謝」要真誠、簡短、不加評語。面試後動線清楚。"
+            },
+            "phase2_5": {
+                title: "Phase 2.5｜PGY2 開放聊聊 (Optional)",
+                mindset: "核心共識：可進可退的安全感。目標：有人在，但不拉我。必須強調 Optional。",
+                do: ["第一句講清楚：Optional / 不影響甄選 / 可直接離開", "散落式角落交流，不圍圈、不破冰", "PGY2 以「我當初也猶豫」做開場，降低權威感"],
+                dont: ["不要全體集合、自我介紹、輪流發言", "不要說「歡迎加入奇美」這種招募語", "不要叫大家留下來填回饋表（破壞信任）"],
+                say: ["「接下來是完全自由的時間。你累了就可以直接回去，真的沒關係。」", "「我當初其實也猶豫很久。」（PGY2）", "「你如果已經有想去的地方也很正常。」（PGY2）"],
+                avoid: ["「大家都留下來喔！」", "「這段很重要一定要聽！」", "「別家不行啦」"],
+                micro: "桌上放「你可以問的題目清單」（選科、生活支持、挫折接住）。"
+            },
+            "phase3_4": {
+                title: "Phase 3 & 4｜記憶延續與決策",
+                mindset: "核心共識：被記得但不被追。目標：成為「安心選項」而不是「被逼選項」。",
+                do: ["48 小時內寄感謝信，內容短、克制、無催促", "提供「自選深度」的資訊連結", "若 PGY 主動問，回覆要快、清楚、短"],
+                dont: ["不要連發多封訊息", "不要在最後關頭群發催志願", "不要請學長姐「一人打一通電話」（高侵入）"],
+                say: ["「謝謝你今天到院參與。祝你在選擇訓練環境的過程一切順利。」", "「你問得很實際，我簡單整理三點給你。」"],
+                avoid: ["「希望你一定要選奇美」", "「你填我們第一就對了」", "「你不選會後悔」"],
+                micro: "信件不含任何情緒勒索語句。"
+            }
+        };
+
+        const tasks = [
+            { id: 97, phase: "Phase 0-1", task: "PGY 招募說明會 (實體)", start: "2025-11-22", end: "2025-11-22", displayDate: "11/22", status: "completed", note: "前期宣傳重點。", manualRef: "phase0" },
+            { id: 98, phase: "官方時程", task: "衛福部：選配作業說明會", start: "2025-11-29", end: "2025-12-07", displayDate: "11/29 - 12/7", status: "completed", note: "選配作業說明。", manualRef: null },
+            { id: 99, phase: "官方時程", task: "衛福部：甄試資料設定", start: "2025-12-08", end: "2025-12-18", displayDate: "12/8 - 12/18", status: "completed", note: "資料設定。", manualRef: null },
+            { id: 100, phase: "官方時程", task: "衛福部：申請人線上報名", start: "2025-12-19", end: "2026-01-08", displayDate: "12/19 - 1/8", status: "completed", note: "報名截止。", manualRef: null },
+            
+            // 院內
+            { id: 1, phase: "Phase 0-1", task: "收集甄選報名", start: "2026-01-01", end: "2026-01-08", displayDate: "1/8 截止", status: "completed", note: "建立第一印象。", manualRef: "phase0" },
+            
+            { id: 101, phase: "官方時程", task: "衛福部：甄試通知", start: "2026-01-09", end: "2026-01-22", displayDate: "1/9 - 1/22", status: "completed", note: "發出通知。", manualRef: null },
+            { id: 2, phase: "Phase 0-1", task: "發出甄選通知", start: "2026-01-09", end: "2026-01-22", displayDate: "1/9 - 1/22", status: "completed", note: "展現專業度。", manualRef: "phase0" },
+            
+            // [CORRECTED] 院內行政簽呈 (2/6 - 2/13)
+            { id: 202, phase: "Phase 2", task: "院內行政簽呈", start: "2026-02-06", end: "2026-02-13", displayDate: "2/6 - 2/13", status: "upcoming", note: "甄選經費、人員、場地借用簽核。", manualRef: null },
+
+            // [CORRECTED] 春節連假 (2/16 - 2/20)
+            { id: 900, phase: "行政事項", task: "春節連假 (行政作業暫停)", start: "2026-02-16", end: "2026-02-20", displayDate: "2/16 - 2/20", status: "holiday", note: "注意！期間無法跑簽呈與發通知，請提前作業。", manualRef: null },
+
+            { id: 102, phase: "官方時程", task: "衛福部：甄試期間", start: "2026-01-23", end: "2026-03-24", displayDate: "1/23 - 3/24", status: "official", note: "面試窗口期。", manualRef: null },
+            
+            { id: 3, phase: "Phase 2", task: "決定考官提名", start: "2026-01-13", end: "2026-01-31", displayDate: "1/13 - 1/31", status: "critical", note: "今日截止！", manualRef: "phase2" },
+            { id: 4, phase: "Phase 2", task: "邀約考官 & 學長姊", start: "2026-01-31", end: "2026-02-06", displayDate: "1/31 - 2/6", status: "active", note: "確保人選品質。", manualRef: "phase2_5" },
+            
+            { id: 201, phase: "Phase 2", task: "面談紀錄單/指南與共識會議準備", start: "2026-02-01", end: "2026-02-24", displayDate: "2/1 - 2/24", status: "active", note: "設計評分表單。", manualRef: "phase2" },
+            
+            { id: 6, phase: "Phase 2", task: "接觸點腳本會議", start: "2026-02-10", end: "2026-02-20", displayDate: "2/10 - 2/20", status: "upcoming", note: "設計劇本。", manualRef: "phase1" },
+            { id: 5, phase: "Phase 2", task: "意願統計", start: "2026-01-26", end: "2026-02-22", displayDate: "1/26 - 2/22", status: "active", note: "掌握流失率。", highlight: false },
+            { id: 203, phase: "Phase 2.5", task: "分組名單調整", start: "2026-02-23", end: "2026-02-25", displayDate: "2/23 - 2/25", status: "upcoming", note: "名單微調。", manualRef: null },
+            { id: 204, phase: "Phase 3", task: "餐點(Buffet/便當)與茶水準備", start: "2026-02-23", end: "2026-03-14", displayDate: "2/23 - 3/14", status: "upcoming", note: "確認訂餐。", manualRef: null },
+            { id: 7, phase: "Phase 2.5", task: "工作人員共識會", start: "2026-02-25", end: "2026-02-25", displayDate: "2/25", status: "upcoming", note: "克制的溫度。", manualRef: "phase1" },
+            { id: 8, phase: "Phase 2.5", task: "學長姊交流共識會", start: "2026-02-25", end: "2026-02-25", displayDate: "2/25", status: "upcoming", note: "訓練「說故事」。", manualRef: "phase2_5" },
+            { id: 9, phase: "Phase 2.5", task: "考官共識會議", start: "2026-02-26", end: "2026-02-26", displayDate: "2/26", status: "upcoming", note: "強調「尊嚴感」。", manualRef: "phase2" },
+            { id: 10, phase: "Phase 3", task: "國考放榜確認", start: "2026-03-01", end: "2026-03-05", displayDate: "3月初", status: "upcoming", note: "擬定應對。", highlight: true },
+            { id: 11, phase: "Phase 3", task: "物資與場地準備", start: "2026-02-25", end: "2026-03-12", displayDate: "2/25 - 3/12", status: "upcoming", note: "魔鬼細節。", highlight: false },
+            { id: 12, phase: "Phase 3", task: "全流程實地預演", start: "2026-03-13", end: "2026-03-14", displayDate: "3/13-14", status: "upcoming", note: "親自走過。", manualRef: "phase1" },
+            { id: 13, phase: "Phase 3", task: "2026 PGY1 甄選日 (D-Day)", start: "2026-03-15", end: "2026-03-15", displayDate: "3/15 (日)", status: "milestone_main", note: "決戰日！流程順暢、考生體驗、考官滿意度。", manualRef: "phase2" },
+            { id: 103, phase: "官方時程", task: "衛福部：志願表登記", start: "2026-03-25", end: "2026-04-08", displayDate: "3/25 - 4/8", status: "official", note: "志願表登記。", manualRef: null },
+            { id: 107, phase: "官方時程", task: "衛福部：甄試名次表登記", start: "2026-03-25", end: "2026-04-08", displayDate: "3/25 - 4/8", status: "official", note: "登記名次。", manualRef: null },
+            { id: 104, phase: "官方時程", task: "衛福部：電腦選配作業", start: "2026-04-09", end: "2026-04-13", displayDate: "4/9 - 4/13", status: "official", note: "電腦選配。", manualRef: null },
+            { id: 108, phase: "官方時程", task: "衛福部：選配結果確認", start: "2026-04-14", end: "2026-04-15", displayDate: "4/14 - 4/15", status: "official", note: "醫院端確認。", manualRef: null },
+            { id: 105, phase: "官方時程", task: "衛福部：選配結果公布", start: "2026-04-16", end: "2026-04-16", displayDate: "4/16 (四)", status: "milestone_official", note: "上午10時公布。", manualRef: null },
+            { id: 106, phase: "官方時程", task: "衛福部：選配結果複查", start: "2026-04-17", end: "2026-04-24", displayDate: "4/17 - 4/24", status: "official", note: "複查申請。", manualRef: null },
+            { id: 109, phase: "官方時程", task: "衛福部：複查結果通知", start: "2026-04-27", end: "2026-04-30", displayDate: "4/27 - 4/30", status: "official", note: "結果通知。", manualRef: null },
+            { id: 14, phase: "Phase 4", task: "寄發通知 & 感謝函", start: "2026-03-16", end: "2026-03-20", displayDate: "3/16 - 3/20", status: "upcoming", note: "建立循環。", manualRef: "phase3_4" },
+            { id: 15, phase: "Phase 4", task: "數據分析與復盤", start: "2026-03-16", end: "2026-03-31", displayDate: "3/16 - 3/31", status: "upcoming", note: "用數據說話。", highlight: true }
+        ];
+
+        let selectedTaskId = null;
+        let activeTab = 'strategy';
+
+        const OFFSET_PX = 256; 
+
+        // --- Core Functions ---
+        function getLeftPos(dateStr) {
+            const d = new Date(dateStr);
+            if (d < startDate) return 0;
+            const diffTime = d - startDate;
+            const diffDays = diffTime / (1000 * 60 * 60 * 24);
+            return (diffDays / totalDays) * 100;
+        }
+
+        function getWidth(startStr, endStr) {
+            let s = new Date(startStr);
+            const e = new Date(endStr);
+            if (s < startDate) s = startDate;
+            const diffTime = e - s;
+            let diffDays = diffTime / (1000 * 60 * 60 * 24);
+            if (diffDays <= 0) diffDays = 1; 
+            diffDays += 1; 
+            return (diffDays / totalDays) * 100;
+        }
+
+        function getStatusStyle(status, isDot = false) {
+            switch (status) {
+                case 'completed': return isDot ? 'bg-slate-300 border border-slate-400' : 'bg-slate-200 border-none text-slate-500';
+                case 'active': return isDot ? 'bg-white border-2 border-slate-300' : 'bg-white border border-slate-300 text-slate-800 shadow-sm';
+                case 'critical': return isDot ? 'bg-[#a94438] border border-white shadow-lg animate-pulse-soft' : 'bg-[#a94438] border border-[#a94438] text-white animate-pulse-soft shadow-md font-medium';
+                case 'milestone': return isDot ? 'bg-[#a94438] ring-4 ring-[#a94438]/20' : 'bg-[#a94438] border border-[#a94438] text-white';
+                case 'milestone_main': return isDot ? 'bg-[#a94438] ring-4 ring-red-400/50 scale-125' : 'bg-[#a94438] border border-[#a94438] text-white font-black text-sm py-1';
+                case 'upcoming': return isDot ? 'bg-white border-2 border-[#a94438]/50 text-[#a94438]' : 'bg-white border border-dashed border-slate-300 text-slate-400';
+                case 'official': return isDot ? 'bg-slate-600 border border-slate-700' : 'bg-slate-600 border border-slate-700 text-white shadow-sm'; 
+                case 'milestone_official': return isDot ? 'bg-slate-800 ring-4 ring-slate-400/30' : 'bg-slate-800 border border-slate-900 text-white font-bold';
+                case 'holiday': return isDot ? 'bg-red-200 ring-2 ring-red-300' : 'bg-holiday-pattern border border-red-200 text-red-500 font-bold';
+                default: return 'bg-white border border-dashed border-slate-300 text-slate-400';
+            }
+        }
+        
+        function updateStats() {
+            // Safe update for stats elements
+            const totalEl = document.getElementById('total-tasks');
+            if (totalEl) totalEl.innerText = tasks.length;
+            
+            const alertEl = document.getElementById('alert-count');
+            if (alertEl) alertEl.innerText = tasks.filter(t => t.status === 'critical').length;
+            
+            const completedEl = document.getElementById('completed-count');
+            if (completedEl) completedEl.innerText = tasks.filter(t => t.status === 'completed').length;
+            
+            // Update D-Day Countdown
+            const dDayEl = document.getElementById('d-day-count');
+            if (dDayEl) {
+                const diffTime = selectionDate - currentDate;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                dDayEl.innerText = diffDays > 0 ? diffDays : 0;
+            }
+        }
+
+        function renderHeaderAndGrid() {
+            const monthsContainer = document.getElementById('months-container');
+            const gridContainer = document.getElementById('timeline-grid');
+            
+            let headerHtml = '';
+            let gridHtml = '';
+            
+            months.forEach((m, index) => {
+                const widthPercent = (m.days / totalDays) * 100;
+                
+                let textClass = 'text-center border-l border-slate-100';
+                if (index === 0) textClass = 'text-left pl-2';
+                if (index === months.length - 1) textClass = 'text-right pr-2 border-l border-slate-100';
+
+                headerHtml += `<div style="width: ${widthPercent}%" class="${textClass}">${m.name}</div>`;
+                gridHtml += `<div style="width: ${widthPercent}%" class="border-r border-slate-100/50 h-full"></div>`;
+            });
+
+            monthsContainer.innerHTML = headerHtml;
+            gridContainer.innerHTML = gridHtml;
+        }
+
+        function renderGantt() {
+            const container = document.getElementById('tasks-container');
+            container.innerHTML = '';
+
+            const sortedTasks = [...tasks].sort((a, b) => new Date(a.start) - new Date(b.start));
+
+            sortedTasks.forEach(task => {
+                const isSelected = task.id === selectedTaskId;
+                
+                let taskIcon = '';
+                if (task.phase === "官方時程") {
+                    taskIcon = `<i data-lucide="landmark" class="w-3 h-3 text-slate-500 mr-1.5"></i>`;
+                } else if (task.status === "holiday") {
+                    taskIcon = `<i data-lucide="coffee" class="w-3 h-3 text-red-400 mr-1.5"></i>`;
+                } else if (task.manualRef) {
+                    taskIcon = `<i data-lucide="book" class="w-3 h-3 text-[#a94438] mr-1.5 opacity-70"></i>`;
+                }
+
+                const isSingleDay = task.start === task.end;
+                const startDate = new Date(task.start);
+                const endDate = new Date(task.end);
+                const diffDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+                
+                const isShortTask = diffDays < 15 && !isSingleDay;
+                
+                const rowClass = isSelected 
+                    ? 'active-task-soft rounded-lg' 
+                    : 'hover:bg-slate-50/80 rounded-lg transition-colors';
+
+                const textClass = isSelected ? 'text-[#a94438] font-bold' : 'text-slate-700';
+                let displayTextClass = task.phase === "官方時程" && !isSelected ? 'text-slate-500 font-medium' : textClass;
+                if (task.status === "holiday") displayTextClass = "text-red-400 font-bold";
+
+                let chartElement = '';
+
+                // Tooltip
+                const tooltipHtml = `
+                    <div class="tooltip-content absolute bottom-full left-1/2 mb-2 px-3 py-2 bg-slate-800 text-white text-xs rounded-lg shadow-xl whitespace-nowrap z-50 pointer-events-none flex flex-col items-center border border-slate-700">
+                        <span class="font-bold mb-0.5 text-[#fca311]">${task.displayDate}</span>
+                        <span class="opacity-90 font-medium">${task.task}</span>
+                        <div class="w-2 h-2 bg-slate-800 border-r border-b border-slate-700 rotate-45 absolute -bottom-1"></div>
+                    </div>
+                `;
+
+                if (isSingleDay) {
+                    chartElement = `
+                        <div 
+                            class="group/dot absolute w-5 h-5 rounded-full flex items-center justify-center shadow-sm transition-all duration-300 z-20 hover:scale-110 cursor-help ${getStatusStyle(task.status, true)}"
+                            style="left: ${getLeftPos(task.start)}%; transform: translateX(-50%);"
+                        >
+                            <div class="w-1.5 h-1.5 bg-current opacity-50 rounded-full"></div>
+                            ${tooltipHtml}
+                        </div>
+                    `;
+                } else {
+                    const outsideTextColor = task.phase === "官方時程" ? "text-slate-600 font-bold" : "text-slate-500 font-medium";
+                    const textInside = !isShortTask ? `<span class="truncate w-full text-center px-1 text-[10px] opacity-90">${task.displayDate}</span>` : '';
+                    const textOutside = isShortTask ? `<span class="absolute left-full ml-2 text-[10px] ${outsideTextColor} whitespace-nowrap z-10 bg-white/80 px-1.5 py-0.5 rounded border border-slate-200/50 shadow-sm backdrop-blur-sm">${task.displayDate}</span>` : '';
+
+                    chartElement = `
+                        <div 
+                            class="group/bar absolute h-6 rounded-md flex items-center transition-all duration-300 ${getStatusStyle(task.status, false)}"
+                            style="left: ${getLeftPos(task.start)}%; width: ${getWidth(task.start, task.end)}%; min-width: 24px;"
+                        >
+                            ${textInside}
+                            ${textOutside}
+                            ${tooltipHtml}
+                        </div>
+                    `;
+                }
+
+                const stickyBgClass = 'sticky-bg-fix';
+
+                const html = `
+                    <div 
+                        id="task-row-${task.id}"
+                        class="group relative h-10 flex items-center cursor-pointer transition-all duration-200 ${rowClass}"
+                        onclick="selectTask(${task.id})"
+                    >
+                        <div class="w-64 text-xs font-medium truncate mr-0 shrink-0 flex items-center pl-4 pr-4 ${displayTextClass} sticky left-0 z-30 ${stickyBgClass} sticky-col-shadow h-full transition-colors border-r border-slate-100">
+                           ${taskIcon}
+                           ${task.task}
+                        </div>
+                        <div class="flex-1 h-full relative flex items-center">
+                            ${chartElement}
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+            
+            lucide.createIcons();
+        }
+
+        function renderDetails() {
+            const container = document.getElementById('detail-panel-content');
+            const task = tasks.find(t => t.id === selectedTaskId);
+            
+            if (!task) return; 
+
+            // Robust Content Generation
+            const strategyContent = `
+                <div class="space-y-6 animate-fade-in p-6 h-full overflow-y-auto custom-scrollbar">
+                    <div class="flex items-center gap-3 border-b border-slate-100 pb-4 mb-2">
+                        <span class="text-[10px] font-bold tracking-widest uppercase text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                            ${task.phaseName || task.phase}
+                        </span>
+                        <h2 class="text-xl font-bold text-slate-800">${task.task}</h2>
+                    </div>
+                    <div class="bg-amber-50/50 p-5 rounded-xl border border-amber-100/50">
+                        <h5 class="font-bold flex items-center gap-2 mb-2 text-[#b45309] text-sm">
+                            <i data-lucide="lightbulb" class="w-4 h-4"></i>
+                            策略/說明
+                        </h5>
+                        <p class="text-sm font-medium leading-relaxed text-slate-700">${task.note}</p>
+                    </div>
+                    ${!task.manualRef ? `<div class="text-center py-8 text-slate-400 text-sm">此任務為行政庶務，無特殊溝通話術。</div>` : ''}
+                </div>`;
+            
+            let playbookContent = '';
+            if (task.manualRef && manualData[task.manualRef]) {
+                const data = manualData[task.manualRef];
+                playbookContent = `
+                    <div class="space-y-5 animate-fade-in p-6 h-full overflow-y-auto custom-scrollbar">
+                        <div class="flex items-center gap-3 border-b border-slate-100 pb-4">
+                            <h2 class="text-xl font-bold text-slate-800">${task.task}</h2>
+                            <span class="ml-auto text-xs font-bold text-white bg-[#a94438] px-2 py-1 rounded-md shadow-sm flex items-center gap-1">
+                                <i data-lucide="book-open" class="w-3 h-3"></i> 指南
+                            </span>
+                        </div>
+                        <div class="bg-gradient-to-br from-white to-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <h5 class="flex items-center gap-2 font-bold text-slate-700 mb-2 text-sm">
+                                <i data-lucide="brain-circuit" class="w-4 h-4 text-[#a94438]"></i> 核心思維
+                            </h5>
+                            <p class="text-sm text-slate-600 leading-relaxed">${data.mindset}</p>
+                        </div>
+                        <div class="grid grid-cols-1 gap-4">
+                             <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                                <h6 class="flex items-center gap-2 font-bold text-emerald-700 text-xs mb-3 uppercase">
+                                    <i data-lucide="check" class="w-4 h-4"></i> 請這樣做 (Do)
+                                </h6>
+                                <ul class="text-xs text-emerald-800 space-y-2">
+                                    ${data.do.map(item => `<li class="flex gap-2"><span class="block w-1 h-1 bg-emerald-500 rounded-full mt-1.5 shrink-0"></span>${item}</li>`).join('')}
+                                </ul>
+                             </div>
+                             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <h6 class="flex items-center gap-2 font-bold text-[#a94438] text-xs mb-3 uppercase">
+                                    <i data-lucide="ban" class="w-4 h-4"></i> 避免行為 (Don't)
+                                </h6>
+                                <ul class="text-xs text-slate-600 space-y-2">
+                                    ${data.dont.map(item => `<li class="flex gap-2"><span class="block w-1 h-1 bg-[#a94438] rounded-full mt-1.5 shrink-0"></span>${item}</li>`).join('')}
+                                </ul>
+                             </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <h6 class="flex items-center gap-2 font-bold text-slate-600 text-sm mb-3">
+                                <i data-lucide="message-circle" class="w-4 h-4"></i> 建議話術
+                            </h6>
+                            <ul class="text-sm text-slate-700 space-y-3 pl-2 border-l-2 border-[#a94438]/20">
+                                ${data.say.map(line => `<li class="italic text-slate-600">"${line}"</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+             
+             const isGuide = task.manualRef && activeTab === 'playbook';
+             
+             container.innerHTML = `
+                <div class="flex flex-col h-full bg-white relative">
+                    <div class="flex border-b border-slate-100 bg-slate-50/50 px-6 pt-4 gap-1 shrink-0">
+                        <button onclick="switchTab('strategy')" class="px-4 py-2 text-xs font-bold rounded-t-lg transition-all ${!isGuide ? 'bg-white text-[#a94438] border-t border-x border-slate-100 shadow-[0_-2px_5px_rgba(0,0,0,0.02)] relative top-px' : 'text-slate-400 hover:text-slate-600'}">策略概況</button>
+                        ${task.manualRef ? `<button onclick="switchTab('playbook')" class="px-4 py-2 text-xs font-bold rounded-t-lg transition-all flex items-center gap-1 ${isGuide ? 'bg-white text-[#a94438] border-t border-x border-slate-100 shadow-[0_-2px_5px_rgba(0,0,0,0.02)] relative top-px' : 'text-slate-400 hover:text-slate-600'}"><i data-lucide="book-open" class="w-3 h-3"></i> 執行指南</button>` : ''}
+                    </div>
+                    <div class="flex-1 overflow-hidden relative">
+                        ${isGuide ? playbookContent : strategyContent}
+                    </div>
+                </div>
+             `;
+             lucide.createIcons();
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            renderDetails();
+        }
+
+        function selectTask(id) {
+            selectedTaskId = id;
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                if (task.manualRef && activeTab === 'strategy') activeTab = 'playbook';
+                else if (!task.manualRef) activeTab = 'strategy';
+                renderDetails(); 
+                renderGantt(); 
+            }
+        }
+
+        function scrollToToday() {
+            const container = document.getElementById('gantt-scroll-area');
+            const todayPosPercent = getLeftPos("2026-01-31");
+            
+            // X-Axis
+            const totalWidth = 2800; 
+            const chartWidth = totalWidth - OFFSET_PX; 
+            const todayPixel = OFFSET_PX + (chartWidth * (todayPosPercent / 100));
+            const viewportWidth = container.clientWidth;
+            const targetScrollLeft = todayPixel - (viewportWidth * 0.33);
+            
+            // Y-Axis Smart Focus
+            const activeTaskIndex = [...tasks].sort((a, b) => new Date(a.start) - new Date(b.start))
+                .findIndex(t => {
+                    const s = new Date(t.start);
+                    const e = new Date(t.end);
+                    return currentDate >= s && currentDate <= e;
+                });
+
+            let targetScrollTop = 0;
+            if (activeTaskIndex !== -1) {
+                const taskRows = document.querySelectorAll('#tasks-container > .group');
+                if (taskRows[activeTaskIndex]) {
+                    targetScrollTop = taskRows[activeTaskIndex].offsetTop - 100;
+                }
+            }
+
+            container.scrollTo({
+                left: Math.max(0, targetScrollLeft),
+                top: Math.max(0, targetScrollTop),
+                behavior: 'smooth'
+            });
+        }
+
+        function init() {
+            renderHeaderAndGrid();
+            
+            const todayProgress = getLeftPos("2026-01-31");
+            const todayLine = document.getElementById('today-line');
+            if (todayLine) {
+                todayLine.style.left = `calc(16rem + (100% - 16rem) * ${todayProgress / 100})`;
+            }
+
+            const scrollArea = document.getElementById('gantt-scroll-area');
+            const scrollHint = document.getElementById('scroll-hint');
+            if(scrollArea && scrollHint) {
+                scrollArea.addEventListener('scroll', () => {
+                    if(scrollArea.scrollLeft > 20) {
+                        scrollHint.style.opacity = '0';
+                    }
+                });
+            }
+
+            renderGantt();
+            updateStats();
+            lucide.createIcons();
+
+            setTimeout(scrollToToday, 500);
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
